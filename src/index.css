@@ -1,0 +1,218 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens ──────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* Backgrounds — warm black, subtle elevation system */
+    --bg:         #0B0B0A;
+    --surface:    #111110;
+    --surface-2:  #161614;
+    --surface-3:  #1C1C1A;
+
+    /* Borders — hairline, barely there */
+    --border:       rgba(255,255,255,0.06);
+    --border-mid:   rgba(255,255,255,0.10);
+    --border-strong:rgba(255,255,255,0.18);
+
+    /* Typography */
+    --fg:        #F2F2EF;
+    --fg-2:      #A8A8A3;
+    --fg-3:      #666660;
+
+    /* Accent — acid chartreuse, the color of high-vis safety equipment */
+    --accent:      #C8FF00;
+    --accent-dim:  rgba(200,255,0,0.12);
+    --accent-glow: rgba(200,255,0,0.25);
+
+    /* Semantic */
+    --success:     #00D68F;
+    --success-dim: rgba(0,214,143,0.12);
+    --warning:     #FF9500;
+    --warning-dim: rgba(255,149,0,0.12);
+    --danger:      #FF3D5A;
+    --danger-dim:  rgba(255,61,90,0.12);
+    --info:        #3D9EFF;
+    --info-dim:    rgba(61,158,255,0.12);
+
+    /* Fonts */
+    --font-display: 'Syne', sans-serif;
+    --font-body:    'IBM Plex Sans', sans-serif;
+    --font-mono:    'IBM Plex Mono', monospace;
+
+    /* Radius — sharp, industrial */
+    --radius-sm:  2px;
+    --radius:     4px;
+    --radius-lg:  6px;
+  }
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  #root { min-height: 100svh; display: flex; flex-direction: column; }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--fg);
+    margin: 0;
+  }
+
+  code, pre, .mono {
+    font-family: var(--font-mono);
+  }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+  /* ─── Focus ─── */
+  :focus-visible {
+    outline: 1.5px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ─── Selection ─── */
+  ::selection { background: var(--accent-dim); color: var(--accent); }
+}
+
+/* ─── Noise texture overlay ──────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────── */
+@layer utilities {
+  .font-display  { font-family: var(--font-display); }
+  .font-body     { font-family: var(--font-body); }
+  .font-mono     { font-family: var(--font-mono); }
+
+  /* Hairline borders */
+  .border-hairline { border: 1px solid var(--border); }
+  .border-hairline-mid { border: 1px solid var(--border-mid); }
+
+  /* Grid background pattern */
+  .bg-grid {
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .bg-dot {
+    background-image: radial-gradient(circle, var(--border-mid) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Accent glow */
+  .glow-accent { box-shadow: 0 0 20px var(--accent-glow), 0 0 40px rgba(200,255,0,0.08); }
+  .text-glow-accent { text-shadow: 0 0 20px var(--accent-glow); }
+
+  /* Score colors */
+  .score-high    { color: var(--success); }
+  .score-mid     { color: var(--warning); }
+  .score-low     { color: var(--danger); }
+
+  /* Monospace label (for data values) */
+  .data-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-3);
+  }
+
+  /* Section divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Fade in animation */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes scanline {
+    0%   { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes ping-slow {
+    75%, 100% { transform: scale(2); opacity: 0; }
+  }
+
+  .animate-fade-up   { animation: fadeUp 0.4s ease both; }
+  .animate-fade-in   { animation: fadeIn 0.3s ease both; }
+  .animate-blink     { animation: blink 1s step-end infinite; }
+  .animate-ping-slow { animation: ping-slow 2s cubic-bezier(0,0,0.2,1) infinite; }
+
+  /* Stagger delays */
+  .delay-50  { animation-delay: 50ms; }
+  .delay-100 { animation-delay: 100ms; }
+  .delay-150 { animation-delay: 150ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
+  .delay-700 { animation-delay: 700ms; }
+
+  /* Hover lift */
+  .hover-lift {
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-mid);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  /* LED dot */
+  .led {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+}
