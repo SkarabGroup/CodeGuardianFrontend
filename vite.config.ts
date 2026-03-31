@@ -10,4 +10,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/account': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/analysis': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+      },
+    },
+  },
 })

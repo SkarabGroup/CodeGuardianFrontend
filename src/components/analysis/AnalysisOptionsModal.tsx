@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Loader2, Zap, Code2, Lock, FileText } from 'lucide-react'
+import { Loader2, Zap, Code2, Lock, FileText, GitBranch } from 'lucide-react'
 import { toast } from 'sonner'
 import { repositoriesApi } from '@/api/repositories'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -34,15 +35,22 @@ interface Props {
   onStarted: () => void
 }
 
+// Regex per validare nomi branch Git (no .., ~, ^, :, ?, *, [, \, spazi)
+const BRANCH_RE = /^(?!.*\.\.)(?!.*\/\/)(?!\/)(?!.*\/$)[^\s~^:?*\[\\]+$/
+
 export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, repositoryName, onStarted }: Props) {
   const [selected, setSelected] = useState<Set<AnalysisArea>>(new Set(['code', 'security', 'documentation']))
+  const [branch, setBranch] = useState('main')
+  const [commitHash, setCommitHash] = useState('')
+  const [branchError, setBranchError] = useState('')
+  const [commitError, setCommitError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const toggleArea = (area: AnalysisArea) => {
     setSelected((s) => {
       const next = new Set(s)
       if (next.has(area)) {
-        if (next.size === 1) return s // At least one must be selected
+        if (next.size === 1) return s
         next.delete(area)
       } else {
         next.add(area)
@@ -51,10 +59,32 @@ export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, reposit
     })
   }
 
+  const validate = () => {
+    let ok = true
+    if (!branch.trim() || !BRANCH_RE.test(branch.trim())) {
+      setBranchError('Nome branch non valido')
+      ok = false
+    } else {
+      setBranchError('')
+    }
+    if (commitHash && !/^[0-9a-f]{40}$/i.test(commitHash.trim())) {
+      setCommitError('Inserire un SHA-1 valido (40 caratteri esadecimali) oppure lasciare vuoto')
+      ok = false
+    } else {
+      setCommitError('')
+    }
+    return ok
+  }
+
   const handleStart = async () => {
+    if (!validate()) return
     setIsLoading(true)
     try {
-      await repositoriesApi.startAnalysis(repositoryId, Array.from(selected))
+      await repositoriesApi.startAnalysis(repositoryId, {
+        areas: Array.from(selected),
+        branch: branch.trim(),
+        commitHash: commitHash.trim() || undefined,
+      })
       toast.success('Analisi avviata', { description: `Analisi di ${repositoryName} in corso...` })
       onStarted()
       onOpenChange(false)
@@ -108,6 +138,36 @@ export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, reposit
               </button>
             )
           })}
+        </div>
+
+        {/* Branch & commit */}
+        <div className="space-y-3 border-t border-[hsl(var(--border))] pt-4">
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-xs font-mono text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
+              <GitBranch className="h-3.5 w-3.5" />
+              Branch
+            </label>
+            <Input
+              value={branch}
+              onChange={e => setBranch(e.target.value)}
+              placeholder="main"
+              className="font-mono text-sm"
+            />
+            {branchError && <p className="font-mono text-[11px] text-[var(--danger)]">{branchError}</p>}
+          </div>
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-xs font-mono text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
+              Commit hash
+              <span className="normal-case tracking-normal font-sans text-[10px]">(opzionale)</span>
+            </label>
+            <Input
+              value={commitHash}
+              onChange={e => setCommitHash(e.target.value)}
+              placeholder="Lascia vuoto per l'ultimo commit del branch"
+              className="font-mono text-sm"
+            />
+            {commitError && <p className="font-mono text-[11px] text-[var(--danger)]">{commitError}</p>}
+          </div>
         </div>
 
         <div className="flex gap-3 pt-2">

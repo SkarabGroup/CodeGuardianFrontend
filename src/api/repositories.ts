@@ -31,8 +31,15 @@ export const repositoriesApi = {
     return data
   },
 
-  startAnalysis: async (id: string, areas?: AnalysisArea[]): Promise<{ analysisId: string }> => {
-    const { data } = await gateway.post(`/analysis/repositories/${id}/analyze`, { areas })
+  startAnalysis: async (
+    id: string,
+    payload?: { areas?: AnalysisArea[]; branch?: string; commitHash?: string },
+  ): Promise<{ analysisId: string }> => {
+    const { data } = await gateway.post(`/analysis/repositories/${id}/analyze`, {
+      areas: payload?.areas,
+      branch: payload?.branch ?? 'main',
+      commitHash: payload?.commitHash ?? null,
+    })
     return data
   },
 

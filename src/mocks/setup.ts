@@ -22,7 +22,7 @@ export function setupMocks() {
 
   mock.onPost('/account/auth/register').reply((config) => {
     const body = JSON.parse(config.data ?? '{}') as { username?: string; email?: string }
-    if (!body.username || !body.email) return [400, { message: 'Dati mancanti' }]
+    if (!body.email) return [400, { message: 'Dati mancanti' }]
     return [201, {
       ...MOCK_TOKENS,
       user: { ...MOCK_USER, username: body.username, email: body.email },

@@ -200,6 +200,8 @@ function makeAnalysis(id: string, repoId: string, daysAgo: number, opts: Paramet
     date: date.toISOString(),
     status: 'completed',
     areas: ['code', 'security', 'documentation'],
+    branch: 'main',
+    commitHash: null,
     report: makeReport(opts),
     executionMetrics: {
       total_time_seconds:        222,

@@ -1,9 +1,10 @@
 // Auth
 export interface User {
   id: string
-  username: string
+  username?: string
   email: string
   createdAt: string
+  updatedAt?: string
   githubId?: string
   hasGithubLinked?: boolean
 }
@@ -108,6 +109,8 @@ export interface Analysis {
   date: string
   status: AnalysisStatus
   areas?: AnalysisArea[]
+  branch?: string
+  commitHash?: string | null
   report?: AnalysisReport
   executionMetrics?: ExecutionMetrics
 }
