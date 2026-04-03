@@ -1,10 +1,14 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ExternalLink, Zap, Code2, Lock, FileText,
   AlertTriangle, ShieldAlert, Info, CheckCircle2, XCircle,
-  Clock, ChevronLeft,
+  Clock, ChevronLeft, Download, ChevronDown,
 } from 'lucide-react'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer,
+} from 'recharts'
 import { toast } from 'sonner'
 import { repositoriesApi } from '@/api/repositories'
 import { analysisApi } from '@/api/analysis'
@@ -17,8 +21,8 @@ import { ScoreCard } from '@/components/shared/ScoreCard'
 import { AnalysisStatusBadge } from '@/components/analysis/AnalysisStatusBadge'
 import { AnalysisOptionsModal } from '@/components/analysis/AnalysisOptionsModal'
 import { useAnalysisSocket } from '@/hooks/useAnalysisSocket'
-import { formatDate, formatDuration, getSeverityVar } from '@/lib/utils'
-import type { Repository, Issue, Remediation, Analysis } from '@/types'
+import { formatDate, formatDateShort, formatDuration, getSeverityVar } from '@/lib/utils'
+import type { Repository, Issue, Remediation, Analysis, ExportFormat } from '@/types'
 
 export function RepositoryDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,6 +31,18 @@ export function RepositoryDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [analyzeOpen, setAnalyzeOpen] = useState(false)
   const [analysisProgress, setAnalysisProgress] = useState(0)
+  const [exporting, setExporting] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!exportOpen) return
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [exportOpen])
 
   const load = useCallback(async () => {
     if (!id) return
@@ -50,6 +66,25 @@ export function RepositoryDetailPage() {
     onCompleted: () => { setAnalysisProgress(100); load() },
     onFailed:    () => load(),
   })
+
+  const handleExport = async (format: ExportFormat) => {
+    if (!analysis) return
+    setExporting(true)
+    setExportOpen(false)
+    try {
+      const blob = await analysisApi.exportReport(analysis.id, format)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `report-${repo?.name ?? analysis.id}.${format}`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Errore durante l\'esportazione')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (isLoading) return (
     <div className="p-6 space-y-4">
@@ -95,20 +130,64 @@ export function RepositoryDetailPage() {
           >
             {repo.url}<ExternalLink className="h-3 w-3" />
           </a>
+          {analysis?.commitHash && (
+            <a
+              href={`${repo.url}/commit/${analysis.commitHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-[var(--fg-3)] hover:text-[var(--accent)] transition-colors mt-0.5"
+            >
+              <span className="data-label">COMMIT</span>
+              {analysis.commitHash.slice(0, 7)}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
         </div>
 
-        <Button
-          size="sm"
-          variant={isRunning ? 'secondary' : 'default'}
-          onClick={() => setAnalyzeOpen(true)}
-          disabled={isRunning}
-          className="shrink-0"
-        >
-          {isRunning
-            ? <><Clock className="h-3.5 w-3.5 animate-spin" />In corso…</>
-            : <><Zap className="h-3.5 w-3.5" />Analizza</>
-          }
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {report && (
+            <div className="relative" ref={exportRef}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setExportOpen(o => !o)}
+                disabled={exporting}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Esporta
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+              {exportOpen && (
+                <div
+                  className="absolute right-0 top-full mt-1 z-50 min-w-[140px] border border-[var(--border)] bg-[var(--bg)] shadow-lg"
+                  style={{ borderRadius: 'var(--radius-sm)' }}
+                >
+                  {(['pdf', 'json'] as ExportFormat[]).map(fmt => (
+                    <button
+                      key={fmt}
+                      onClick={() => handleExport(fmt)}
+                      className="w-full flex items-center gap-2 px-3 py-2 font-mono text-xs text-[var(--fg-2)] hover:bg-[var(--surface)] hover:text-[var(--fg)] transition-colors text-left"
+                    >
+                      <Download className="h-3 w-3 text-[var(--fg-3)]" />
+                      {fmt.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <Button
+            size="sm"
+            variant={isRunning ? 'secondary' : 'default'}
+            onClick={() => setAnalyzeOpen(true)}
+            disabled={isRunning}
+          >
+            {isRunning
+              ? <><Clock className="h-3.5 w-3.5 animate-spin" />In corso…</>
+              : <><Zap className="h-3.5 w-3.5" />Analizza</>
+            }
+          </Button>
+        </div>
       </div>
 
       {/* ── Analysis progress bar ────────────────────────────── */}
@@ -174,12 +253,52 @@ export function RepositoryDetailPage() {
 
             <div className="flex-1 overflow-y-auto">
               <TabsContent value="code" className="px-6 mt-0">
+                {(report.codeAnalysis?.testCoverage != null || report.codeAnalysis?.linesAnalyzed != null) && (
+                  <div className="flex gap-8 py-4 border-b border-[var(--border)] mb-2">
+                    {report.codeAnalysis.testCoverage != null && (
+                      <div>
+                        <p className="data-label mb-0.5">COPERTURA TEST</p>
+                        <p className="font-mono text-xl font-300" style={{ color: 'var(--accent)', fontFeatureSettings: '"tnum"' }}>
+                          {report.codeAnalysis.testCoverage}<span className="text-sm text-[var(--fg-3)]">%</span>
+                        </p>
+                      </div>
+                    )}
+                    {report.codeAnalysis.linesAnalyzed != null && (
+                      <div>
+                        <p className="data-label mb-0.5">RIGHE ANALIZZATE</p>
+                        <p className="font-mono text-xl font-300" style={{ color: 'var(--fg)', fontFeatureSettings: '"tnum"' }}>
+                          {report.codeAnalysis.linesAnalyzed.toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <IssuesList issues={report.codeAnalysis?.issues ?? report.qualityIssues ?? []} emptyMsg="Nessun problema di codice rilevato" />
               </TabsContent>
               <TabsContent value="security" className="px-6 mt-0">
                 <IssuesList issues={report.securityAnalysis?.issues ?? report.securityIssues ?? []} emptyMsg="Nessun problema di sicurezza rilevato" />
               </TabsContent>
               <TabsContent value="docs" className="px-6 mt-0">
+                {(report.documentationAnalysis?.completenessScore != null || report.documentationAnalysis?.coherenceScore != null) && (
+                  <div className="flex gap-8 py-4 border-b border-[var(--border)] mb-2">
+                    {report.documentationAnalysis.completenessScore != null && (
+                      <div>
+                        <p className="data-label mb-0.5">COMPLETEZZA</p>
+                        <p className="font-mono text-xl font-300" style={{ color: 'var(--accent)', fontFeatureSettings: '"tnum"' }}>
+                          {report.documentationAnalysis.completenessScore}<span className="text-sm text-[var(--fg-3)]">%</span>
+                        </p>
+                      </div>
+                    )}
+                    {report.documentationAnalysis.coherenceScore != null && (
+                      <div>
+                        <p className="data-label mb-0.5">COERENZA</p>
+                        <p className="font-mono text-xl font-300" style={{ color: 'var(--accent)', fontFeatureSettings: '"tnum"' }}>
+                          {report.documentationAnalysis.coherenceScore}<span className="text-sm text-[var(--fg-3)]">%</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <IssuesList issues={report.documentationAnalysis?.issues ?? []} emptyMsg="Documentazione completa" />
               </TabsContent>
               <TabsContent value="remediation" className="px-6 mt-0">
@@ -243,17 +362,32 @@ function IssuesList({ issues, emptyMsg }: { issues: Issue[]; emptyMsg: string })
           >
             <div className="flex items-start justify-between gap-4 mb-1">
               <span className="font-body text-sm font-medium text-[var(--fg)]">{issue.title}</span>
-              <span
-                className="font-mono text-[10px] tracking-widest px-2 py-0.5 border shrink-0"
-                style={{
-                  color: getSeverityVar(issue.severity),
-                  borderColor: `${getSeverityVar(issue.severity)}30`,
-                  background: `${getSeverityVar(issue.severity)}10`,
-                  borderRadius: 'var(--radius-sm)',
-                }}
-              >
-                {issue.severity.toUpperCase()}
-              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {issue.category && (
+                  <span
+                    className="font-mono text-[10px] tracking-widest px-2 py-0.5 border"
+                    style={{
+                      color: 'var(--fg-2)',
+                      borderColor: 'var(--border)',
+                      background: 'var(--surface)',
+                      borderRadius: 'var(--radius-sm)',
+                    }}
+                  >
+                    {issue.category}
+                  </span>
+                )}
+                <span
+                  className="font-mono text-[10px] tracking-widest px-2 py-0.5 border"
+                  style={{
+                    color: getSeverityVar(issue.severity),
+                    borderColor: `${getSeverityVar(issue.severity)}30`,
+                    background: `${getSeverityVar(issue.severity)}10`,
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                >
+                  {issue.severity.toUpperCase()}
+                </span>
+              </div>
             </div>
             <p className="text-xs text-[var(--fg-3)] font-light mb-1">{issue.description}</p>
             {issue.file && (
@@ -343,7 +477,28 @@ function RemediationList({ remediations, analysisId, onDecisionUpdate }: {
                 )}
               </div>
             </div>
-            <p className="text-xs text-[var(--fg-3)] font-light mb-3">{r.description}</p>
+            <p className="text-xs text-[var(--fg-3)] font-light mb-2">{r.description}</p>
+            {(() => {
+              const cveMatch = r.reason?.match(/CVE-\d{4}-\d+/)
+              const owaspMatch = (r.category + ' ' + (r.reason ?? '')).match(/OWASP[-\s]?(A\d{2})/)
+              if (!cveMatch && !owaspMatch) return null
+              return (
+                <div className="flex flex-wrap gap-3 mb-2">
+                  {cveMatch && (
+                    <a href={`https://nvd.nist.gov/vuln/detail/${cveMatch[0]}`} target="_blank" rel="noopener noreferrer"
+                       className="inline-flex items-center gap-1 font-mono text-[10px] text-[var(--fg-3)] hover:text-[var(--accent)] transition-colors">
+                      <ExternalLink className="h-2.5 w-2.5" />{cveMatch[0]}
+                    </a>
+                  )}
+                  {owaspMatch && (
+                    <a href="https://owasp.org/Top10/" target="_blank" rel="noopener noreferrer"
+                       className="inline-flex items-center gap-1 font-mono text-[10px] text-[var(--fg-3)] hover:text-[var(--accent)] transition-colors">
+                      <ExternalLink className="h-2.5 w-2.5" />OWASP Top 10 {owaspMatch[1]}
+                    </a>
+                  )}
+                </div>
+              )
+            })()}
             {r.currentCode && (
               <div className="space-y-2">
                 <div>
@@ -394,12 +549,98 @@ function AnalysisHistory({ repositoryId }: { repositoryId: string }) {
     )
   }
 
+  const chartData = [...history]
+    .filter(a => a.report)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .map(a => ({
+      date: formatDateShort(a.date),
+      quality: a.report!.qualityScore,
+      security: a.report!.securityScore,
+      docs: a.report!.documentationScore ?? null,
+    }))
+
   return (
     <div>
       <p className="data-label py-4">STORICO ANALISI</p>
+
+      {chartData.length >= 2 && (
+        <div
+          className="mb-5 border border-[var(--border)] bg-[var(--surface)] p-4"
+          style={{ borderRadius: 'var(--radius-sm)' }}
+        >
+          <p className="data-label mb-3">ANDAMENTO SCORE</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={chartData} margin={{ top: 4, right: 16, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 10, fill: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 10, fill: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                }}
+                labelStyle={{ color: 'var(--fg-3)', marginBottom: 4 }}
+              />
+              <Legend
+                iconType="plainline"
+                iconSize={16}
+                wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', paddingTop: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="quality"
+                name="Qualità"
+                stroke="var(--accent)"
+                strokeWidth={1.5}
+                dot={{ r: 3, fill: 'var(--accent)' }}
+                activeDot={{ r: 4 }}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="security"
+                name="Sicurezza"
+                stroke="var(--danger)"
+                strokeWidth={1.5}
+                dot={{ r: 3, fill: 'var(--danger)' }}
+                activeDot={{ r: 4 }}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="docs"
+                name="Docs"
+                stroke="var(--fg-3)"
+                strokeWidth={1.5}
+                dot={{ r: 3, fill: 'var(--fg-3)' }}
+                activeDot={{ r: 4 }}
+                connectNulls
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       <div className="space-y-px">
         {history.map(a => (
-          <div key={a.id} className="border border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex items-center justify-between" style={{ borderRadius: 'var(--radius-sm)' }}>
+          <div
+            key={a.id}
+            className="border border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex items-center justify-between"
+            style={{ borderRadius: 'var(--radius-sm)' }}
+          >
             <div>
               <p className="font-mono text-xs text-[var(--fg)]">{formatDate(a.date)}</p>
               {a.executionMetrics && (

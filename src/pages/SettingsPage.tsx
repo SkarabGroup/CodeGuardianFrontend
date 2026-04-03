@@ -229,6 +229,21 @@ function PasswordSection() {
 function GitHubSection() {
   const { user, refreshUser } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+  const [linkPending, setLinkPending] = useState(false)
+
+  const handleLink = () => {
+    setLinkPending(true)
+  }
+
+  const handleLinkConfirm = () => {
+    setLinkPending(false)
+    // In produzione: window.location.href = oauthRedirectUrl
+    toast.info('Redirect OAuth non ancora disponibile in questo ambiente')
+  }
+
+  const handleLinkCancel = () => {
+    setLinkPending(false)
+  }
 
   const handleUnlink = async () => {
     if (!confirm('Scollegare il tuo account GitHub?')) return
@@ -272,13 +287,33 @@ function GitHubSection() {
               <div className="h-2 w-2 rounded-full bg-[hsl(var(--muted-foreground))]" />
               <span className="text-sm text-[hsl(var(--muted-foreground))]">Nessun account GitHub collegato</span>
             </div>
-            <Button>
-              <GithubIcon className="h-4 w-4" />
-              Collega GitHub
-            </Button>
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              Verrai reindirizzato a GitHub per autorizzare l'accesso.
-            </p>
+            {linkPending ? (
+              <div className="rounded-lg border border-[hsl(var(--border))] p-4 space-y-3">
+                <p className="text-sm font-medium">Stai per essere reindirizzato a GitHub</p>
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  CodeGuardian richiederà l'accesso in lettura ai tuoi repository per poterli analizzare. Puoi revocare l'accesso in qualsiasi momento dalle impostazioni di GitHub.
+                </p>
+                <div className="flex gap-2">
+                  <Button onClick={handleLinkConfirm}>
+                    <GithubIcon className="h-4 w-4" />
+                    Procedi con GitHub
+                  </Button>
+                  <Button variant="outline" onClick={handleLinkCancel}>
+                    Annulla
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Button onClick={handleLink}>
+                  <GithubIcon className="h-4 w-4" />
+                  Collega GitHub
+                </Button>
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Verrai reindirizzato a GitHub per autorizzare l'accesso.
+                </p>
+              </>
+            )}
           </div>
         )}
       </CardContent>

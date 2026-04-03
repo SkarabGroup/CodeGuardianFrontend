@@ -19,9 +19,13 @@ dist-ssr
 # Tieni solo il template di esempio
 !.env.example
 
+# Test coverage output (generato da vitest --coverage)
+coverage/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+*.code-workspace
 .idea
 .DS_Store
 *.suo

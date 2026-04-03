@@ -135,6 +135,7 @@ export interface RankedRepository {
   repository: Repository
   score: number
   lastAnalyzed?: string
+  scoreDelta?: number
 }
 
 // Export

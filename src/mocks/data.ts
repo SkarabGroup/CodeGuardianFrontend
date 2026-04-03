@@ -201,7 +201,7 @@ function makeAnalysis(id: string, repoId: string, daysAgo: number, opts: Paramet
     status: 'completed',
     areas: ['code', 'security', 'documentation'],
     branch: 'main',
-    commitHash: null,
+    commitHash: id.endsWith('prev') || id.endsWith('old') ? null : id === 'ana_001' ? 'a3f8b2c' : id === 'ana_002' ? 'd9e1f04' : id === 'ana_003' ? 'c72a5b1' : null,
     report: makeReport(opts),
     executionMetrics: {
       total_time_seconds:        222,
@@ -305,18 +305,21 @@ export const MOCK_RANKING: RankedRepository[] = [
     repository: MOCK_REPOS[1], // auth-service
     score: 94,
     lastAnalyzed: MOCK_REPOS[1].lastAnalysis?.date,
+    scoreDelta: +4,  // 94 vs 90 precedente
   },
   {
     rank: 2,
     repository: MOCK_REPOS[0], // codeguardian-backend
     score: 87,
     lastAnalyzed: MOCK_REPOS[0].lastAnalysis?.date,
+    scoreDelta: +7,  // 87 vs 80 precedente
   },
   {
     rank: 3,
     repository: MOCK_REPOS[2], // data-pipeline
     score: 53,
     lastAnalyzed: MOCK_REPOS[2].lastAnalysis?.date,
+    scoreDelta: +6,  // 53 vs 47 precedente
   },
 ]
 

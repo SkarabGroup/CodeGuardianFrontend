@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { History, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,6 +16,9 @@ export function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [dateError, setDateError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -25,6 +28,26 @@ export function HistoryPage() {
       .catch(() => toast.error('Errore caricamento storico'))
       .finally(() => setIsLoading(false))
   }, [page])
+
+  const filteredAnalyses = useMemo(() => {
+    let error: string | null = null
+    if (startDate && endDate) {
+      if (startDate > endDate) {
+        error = 'La data di inizio deve essere precedente alla data di fine'
+      } else {
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
+        if (diffMonths > 12) error = 'L\'intervallo non può superare 12 mesi'
+      }
+    }
+    setDateError(error)
+    if (error || (!startDate && !endDate)) return analyses
+    return analyses.filter(a => {
+      const d = a.date.slice(0, 10)
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate)
+    })
+  }, [analyses, startDate, endDate])
 
   return (
     <div className="flex flex-col h-full" style={{ fontFamily: 'var(--font-body)' }}>
@@ -37,8 +60,39 @@ export function HistoryPage() {
         </div>
       </div>
 
+      {/* Date filter */}
+      <div className="border-b border-[var(--border)] px-6 py-3 flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="data-label">DA</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+            className="font-mono text-xs h-7 px-2 bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--accent)]"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="data-label">A</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+            className="font-mono text-xs h-7 px-2 bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--accent)]"
+          />
+        </div>
+        {(startDate || endDate) && (
+          <button
+            onClick={() => { setStartDate(''); setEndDate('') }}
+            className="data-label text-[var(--fg-3)] hover:text-[var(--fg-2)] transition-colors"
+          >
+            AZZERA
+          </button>
+        )}
+        {dateError && <p className="font-mono text-[11px] text-[var(--danger)]">{dateError}</p>}
+      </div>
+
       {/* Column headers */}
-      {!isLoading && analyses.length > 0 && (
+      {!isLoading && filteredAnalyses.length > 0 && (
         <div
           className="grid border-b border-[var(--border)] px-6 py-2"
           style={{ gridTemplateColumns: '1fr 100px 80px 80px 120px' }}
@@ -56,18 +110,18 @@ export function HistoryPage() {
           <div className="p-6 space-y-2">
             {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
           </div>
-        ) : analyses.length === 0 ? (
+        ) : filteredAnalyses.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="border border-[var(--border)] p-5 mb-6 inline-flex" style={{ borderRadius: 'var(--radius)' }}>
               <History className="h-8 w-8 text-[var(--fg-3)]" strokeWidth={1.25} />
             </div>
             <p className="font-display font-700 text-lg text-[var(--fg)] mb-2">Nessuna analisi</p>
             <p className="text-sm text-[var(--fg-3)] font-light max-w-xs">
-              Le analisi completate appariranno qui.
+              {startDate || endDate ? 'Nessuna analisi nel periodo selezionato.' : 'Le analisi completate appariranno qui.'}
             </p>
           </div>
         ) : (
-          analyses.map((a, i) => (
+          filteredAnalyses.map((a, i) => (
             <div
               key={a.id}
               className="grid items-center border-b border-[var(--border)] px-6 py-3 cursor-pointer

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, GitBranch, Trash2, ExternalLink, Zap } from 'lucide-react'
+import { Plus, Search, GitBranch, Trash2, ExternalLink, Zap, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { repositoriesApi } from '@/api/repositories'
 import { Button } from '@/components/ui/button'
@@ -16,17 +16,20 @@ import type { Repository } from '@/types'
 export function RepositoriesPage() {
   const [repos, setRepos] = useState<Repository[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [analyzeTarget, setAnalyzeTarget] = useState<Repository | null>(null)
   const navigate = useNavigate()
 
   const loadRepos = useCallback(async () => {
+    setLoadError(false)
     try {
       const data = await repositoriesApi.list({ search: search || undefined })
       setRepos(data)
     } catch {
       toast.error('Errore nel caricamento')
+      setLoadError(true)
     } finally {
       setIsLoading(false)
     }
@@ -131,11 +134,18 @@ export function RepositoriesPage() {
               {search ? 'Nessun risultato' : 'Nessun repository'}
             </p>
             <p className="text-sm text-[var(--fg-3)] font-light mb-6 max-w-xs">
-              {search
-                ? `Nessun repository corrisponde a "${search}".`
-                : 'Aggiungi il primo repository per avviare un\'analisi.'}
+              {loadError
+                ? 'Impossibile caricare i repository. Controlla la connessione.'
+                : search
+                  ? `Nessun repository corrisponde a "${search}".`
+                  : 'Aggiungi il primo repository per avviare un\'analisi.'}
             </p>
-            {!search && (
+            {loadError ? (
+              <Button size="sm" variant="outline" onClick={() => { setIsLoading(true); loadRepos() }}>
+                <RefreshCw className="h-3.5 w-3.5" />
+                Riprova
+              </Button>
+            ) : !search && (
               <Button size="sm" onClick={() => setAddOpen(true)}>
                 <Plus className="h-3.5 w-3.5" />
                 Aggiungi repository

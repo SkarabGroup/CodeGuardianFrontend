@@ -27,6 +27,14 @@ const schema = z.object({
 }).refine(d => d.password === d.confirmPassword, {
   message: 'Le password non coincidono',
   path: ['confirmPassword'],
+}).superRefine((d, ctx) => {
+  if (d.username.length >= 3 && d.password.toLowerCase().includes(d.username.toLowerCase())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'La password non può contenere il nome utente',
+      path: ['password'],
+    })
+  }
 })
 
 type FormValues = z.infer<typeof schema>
@@ -42,19 +50,20 @@ function ShieldMark() {
 }
 
 const pwdChecks = [
-  { label: '8+ caratteri',      test: (p: string) => p.length >= 8 },
-  { label: 'Maiuscola',         test: (p: string) => /[A-Z]/.test(p) },
-  { label: 'Minuscola',         test: (p: string) => /[a-z]/.test(p) },
-  { label: 'Numero',            test: (p: string) => /[0-9]/.test(p) },
-  { label: 'Carattere speciale',test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+  { label: '8+ caratteri',           test: (p: string, _u: string) => p.length >= 8 },
+  { label: 'Maiuscola',              test: (p: string, _u: string) => /[A-Z]/.test(p) },
+  { label: 'Minuscola',             test: (p: string, _u: string) => /[a-z]/.test(p) },
+  { label: 'Numero',                 test: (p: string, _u: string) => /[0-9]/.test(p) },
+  { label: 'Carattere speciale',     test: (p: string, _u: string) => /[^A-Za-z0-9]/.test(p) },
+  { label: 'Non contiene username',  test: (p: string, u: string) => u.length < 3 || !p.toLowerCase().includes(u.toLowerCase()) },
 ]
 
-function PasswordChecks({ value }: { value: string }) {
+function PasswordChecks({ value, username }: { value: string; username: string }) {
   if (!value) return null
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
       {pwdChecks.map(({ label, test }) => {
-        const ok = test(value)
+        const ok = test(value, username)
         return (
           <div key={label} className="flex items-center gap-1.5">
             {ok
@@ -80,6 +89,7 @@ export function RegisterPage() {
     useForm<FormValues>({ resolver: zodResolver(schema) })
 
   const password = watch('password', '')
+  const username = watch('username', '')
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -157,7 +167,7 @@ export function RegisterPage() {
                 {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <PasswordChecks value={password} />
+            <PasswordChecks value={password} username={username} />
             {errors.password && <p className="font-mono text-[11px] text-[var(--danger)]">{errors.password.message}</p>}
           </div>
 

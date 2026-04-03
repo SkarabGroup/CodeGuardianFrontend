@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy } from 'lucide-react'
+import { Trophy, TrendingUp, TrendingDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { repositoriesApi } from '@/api/repositories'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,7 +34,7 @@ export function RankingPage() {
       {!isLoading && ranking.length > 0 && (
         <div
           className="grid border-b border-[var(--border)] px-6 py-2"
-          style={{ gridTemplateColumns: '48px 1fr 160px 100px' }}
+          style={{ gridTemplateColumns: '48px 1fr 160px 120px' }}
         >
           <span className="data-label">#</span>
           <span className="data-label">REPOSITORY</span>
@@ -59,7 +59,7 @@ export function RankingPage() {
             </p>
           </div>
         ) : (
-          ranking.map(({ rank, repository, score, lastAnalyzed }, i) => {
+          ranking.map(({ rank, repository, score, lastAnalyzed, scoreDelta }, i) => {
             const isTop3 = rank <= 3
             return (
               <div
@@ -67,7 +67,7 @@ export function RankingPage() {
                 className="grid items-center border-b border-[var(--border)] px-6 py-4 cursor-pointer
                            hover:bg-[var(--surface)] transition-colors duration-100 animate-fade-in"
                 style={{
-                  gridTemplateColumns: '48px 1fr 160px 100px',
+                  gridTemplateColumns: '48px 1fr 160px 120px',
                   animationDelay: `${i * 40}ms`,
                   background: isTop3 ? `${getScoreVar(score)}05` : undefined,
                   borderLeft: isTop3 ? `2px solid ${getScoreVar(score)}40` : '2px solid transparent',
@@ -106,15 +106,29 @@ export function RankingPage() {
                   }
                 </div>
 
-                {/* Score */}
-                <div className="text-right">
-                  <span
-                    className="font-mono text-2xl font-300"
-                    style={{ color: getScoreVar(score), fontFeatureSettings: '"tnum"' }}
-                  >
-                    {score}
-                  </span>
-                  <span className="data-label ml-0.5">/100</span>
+                {/* Score + delta */}
+                <div className="text-right flex items-center justify-end gap-2">
+                  {scoreDelta !== undefined && scoreDelta !== 0 && (
+                    <span
+                      className="inline-flex items-center gap-0.5 font-mono text-[10px]"
+                      style={{ color: scoreDelta > 0 ? 'var(--success)' : 'var(--danger)' }}
+                    >
+                      {scoreDelta > 0
+                        ? <TrendingUp className="h-3 w-3" />
+                        : <TrendingDown className="h-3 w-3" />
+                      }
+                      {scoreDelta > 0 ? '+' : ''}{scoreDelta}
+                    </span>
+                  )}
+                  <div>
+                    <span
+                      className="font-mono text-2xl font-300"
+                      style={{ color: getScoreVar(score), fontFeatureSettings: '"tnum"' }}
+                    >
+                      {score}
+                    </span>
+                    <span className="data-label ml-0.5">/100</span>
+                  </div>
                 </div>
               </div>
             )
