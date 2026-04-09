@@ -24,9 +24,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await usersApi.getProfile()
       setUser(profile)
-    } catch {
-      setUser(null)
-      tokenStorage.clear()
+    } catch (err: unknown) {
+      // 404 = endpoint not yet implemented: keep token, just don't restore user
+      // 401 = token invalid: clear session
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status !== 404) {
+        setUser(null)
+        tokenStorage.clear()
+      }
     }
   }, [])
 

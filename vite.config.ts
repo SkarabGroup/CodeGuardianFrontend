@@ -15,6 +15,7 @@ export default defineConfig({
       '/account': {
         target: 'http://localhost:3001',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/account/, ''),
       },
       '/analysis': {
         target: 'http://localhost:3002',

@@ -22,6 +22,9 @@ dist-ssr
 # Test coverage output (generato da vitest --coverage)
 coverage/
 
+# Playwright MCP test artifacts
+.playwright-mcp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

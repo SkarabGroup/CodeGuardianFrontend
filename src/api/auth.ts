@@ -1,4 +1,4 @@
-import { gateway } from './gateway'
+import { gateway, tokenStorage } from './gateway'
 import type { User, AuthTokens, LoginCredentials, RegisterCredentials } from '@/types'
 
 export const authApi = {
@@ -7,8 +7,8 @@ export const authApi = {
     return data
   },
 
-  register: async (credentials: RegisterCredentials): Promise<AuthTokens & { user: User }> => {
-    const { data } = await gateway.post('/account/auth/register', credentials)
+  register: async ({ email, password }: RegisterCredentials): Promise<AuthTokens & { user: User }> => {
+    const { data } = await gateway.post('/account/auth/register', { email, password })
     return data
   },
 
@@ -18,7 +18,7 @@ export const authApi = {
   },
 
   logout: async (): Promise<void> => {
-    await gateway.post('/account/auth/logout').catch(() => {
+    await gateway.post('/account/auth/logout', { refreshToken: tokenStorage.getRefresh() }).catch(() => {
       // best-effort: always clear local storage
     })
   },

@@ -75,6 +75,7 @@ export function setupMocks() {
       analysisId: `ana_mock_${Date.now()}`,
     })
 
+
     // History per singola repo
     const repoHistory = MOCK_HISTORY.items.filter(a => a.repositoryId === repo.id)
     mock.onGet(`/analysis/repositories/${repo.id}/history`).reply(200, {
@@ -90,6 +91,16 @@ export function setupMocks() {
       b: MOCK_HISTORY.items[3],
       delta: { qualityScore: +7, securityScore: +4, documentationScore: +6 },
     })
+  })
+
+  // Endpoint reale del backend: POST /analysis/start
+  mock.onPost('/analysis/start').reply((config) => {
+    const body = JSON.parse(config.data ?? '{}') as { repositoryUrl?: string; branch?: string }
+    const repo = MOCK_REPOS.find(r => r.url === body.repositoryUrl)
+    return [200, {
+      analysisId: `ana_mock_${Date.now()}`,
+      path: `/tmp/cg-clone/${repo?.id ?? 'unknown'}`,
+    }]
   })
 
   mock.onPost('/analysis/repositories').reply((config) => {

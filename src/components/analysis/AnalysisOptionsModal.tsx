@@ -32,13 +32,14 @@ interface Props {
   onOpenChange: (open: boolean) => void
   repositoryId: string
   repositoryName: string
+  repositoryUrl: string
   onStarted: () => void
 }
 
 // Regex per validare nomi branch Git (no .., ~, ^, :, ?, *, [, \, spazi)
 const BRANCH_RE = /^(?!.*\.\.)(?!.*\/\/)(?!\/)(?!.*\/$)[^\s~^:?*\[\\]+$/
 
-export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, repositoryName, onStarted }: Props) {
+export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, repositoryName, repositoryUrl, onStarted }: Props) {
   const [selected, setSelected] = useState<Set<AnalysisArea>>(new Set(['code', 'security', 'documentation']))
   const [branch, setBranch] = useState('main')
   const [commitHash, setCommitHash] = useState('')
@@ -84,6 +85,7 @@ export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, reposit
         areas: Array.from(selected),
         branch: branch.trim(),
         commitHash: commitHash.trim() || undefined,
+        repositoryUrl,
       })
       toast.success('Analisi avviata', { description: `Analisi di ${repositoryName} in corso...` })
       onStarted()

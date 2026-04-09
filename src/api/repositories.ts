@@ -1,5 +1,5 @@
 import { gateway } from './gateway'
-import type { Repository, PaginatedResponse, RankedRepository, AnalysisArea } from '@/types'
+import type { Repository, PaginatedResponse, RankedRepository, AnalysisArea, Analysis } from '@/types'
 
 export const repositoriesApi = {
   list: async (params?: { search?: string; page?: number; limit?: number }): Promise<Repository[]> => {
@@ -33,13 +33,28 @@ export const repositoriesApi = {
 
   startAnalysis: async (
     id: string,
-    payload?: { areas?: AnalysisArea[]; branch?: string; commitHash?: string },
+    payload?: { areas?: AnalysisArea[]; branch?: string; commitHash?: string; repositoryUrl?: string },
   ): Promise<{ analysisId: string }> => {
+    // Il backend espone POST /analysis/start con repositoryUrl nel body.
+    // Se repositoryUrl non è fornito, fallback al path legacy per compatibilità mock/sviluppo locale.
+    if (payload?.repositoryUrl) {
+      const { data } = await gateway.post('/analysis/start', {
+        repositoryUrl: payload.repositoryUrl,
+        branch: payload.branch ?? 'main',
+        commitHash: payload.commitHash ?? null,
+      })
+      return data
+    }
     const { data } = await gateway.post(`/analysis/repositories/${id}/analyze`, {
       areas: payload?.areas,
       branch: payload?.branch ?? 'main',
       commitHash: payload?.commitHash ?? null,
     })
+    return data
+  },
+
+  getAnalysis: async (id: string): Promise<Analysis> => {
+    const { data } = await gateway.get(`/analysis/reports/${id}`)
     return data
   },
 

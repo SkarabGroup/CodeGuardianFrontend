@@ -42,9 +42,45 @@ gateway.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config
 })
 
+// ── Response normalizer ──────────────────────────────────────
+// Trasforma la risposta del backend prima che raggiunga i componenti:
+//   • status: backend usa "PENDING"/"IN_PROGRESS" → frontend usa "pending"/"in-progress"
+//   • testCoverage: backend usa range [0,1] → frontend usa [0,100]
+const STATUS_MAP: Record<string, string> = {
+  PENDING:     'pending',
+  IN_PROGRESS: 'in-progress',
+  COMPLETED:   'completed',
+  FAILED:      'failed',
+  NOT_ANALYZED: 'not-analyzed',
+}
+
+function normalizeAnalysis(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(normalizeAnalysis)
+  if (obj !== null && typeof obj === 'object') {
+    const record = obj as Record<string, unknown>
+    const result: Record<string, unknown> = {}
+    for (const key of Object.keys(record)) {
+      if (key === 'status' && typeof record[key] === 'string') {
+        result[key] = STATUS_MAP[record[key] as string] ?? (record[key] as string).toLowerCase()
+      } else if (key === 'testCoverage' && typeof record[key] === 'number' && (record[key] as number) <= 1) {
+        result[key] = Math.round((record[key] as number) * 100)
+      } else {
+        result[key] = normalizeAnalysis(record[key])
+      }
+    }
+    return result
+  }
+  return obj
+}
+
 // Response: auto-refresh on 401
 gateway.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    if (response.config.responseType !== 'blob') {
+      response.data = normalizeAnalysis(response.data)
+    }
+    return response
+  },
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 

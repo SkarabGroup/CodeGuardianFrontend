@@ -331,6 +331,7 @@ export function RepositoryDetailPage() {
         onOpenChange={setAnalyzeOpen}
         repositoryId={repo.id}
         repositoryName={repo.name}
+        repositoryUrl={repo.url}
         onStarted={load}
       />
     </div>
