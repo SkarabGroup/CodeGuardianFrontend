@@ -69,13 +69,17 @@ echo ""
 
 # ── PostgreSQL (solo modalità reale) ─────────────────────────────────────────
 if [[ "$MOCK_MODE" == "false" ]]; then
-  export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+  export PATH="/opt/homebrew/opt/postgresql@14/bin:$PATH"
   if ! pg_isready -q 2>/dev/null; then
-    echo "Starting PostgreSQL@17..."
-    brew services start postgresql@17
+    echo "Starting PostgreSQL@14..."
+    brew services start postgresql@14
     sleep 2
+    
+    echo "Inizializzando DB Account MS..."
+    psql -U root -h localhost -d miodb -f "$ACCOUNT_DIR/database/init.sql" 2>/dev/null || echo "Tabelle parzialmente o già create."
   else
     echo "PostgreSQL already running."
+    psql -U root -h localhost -d miodb -f "$ACCOUNT_DIR/database/init.sql" 2>/dev/null || echo "Tabelle parzialmente o già create."
   fi
 
   # Avverte se i microservizi non sono sul branch develop
@@ -90,6 +94,17 @@ if [[ "$MOCK_MODE" == "false" ]]; then
     echo -e "${YELLOW}WARNING: Analysis microservice is on branch '${ANALYSIS_BRANCH}', not 'develop'.${NC}"
     echo "         Run: cd $ANALYSIS_DIR && git checkout develop"
     echo ""
+  fi
+fi
+
+# ── Docker Documentation Agent ────────────────────────────────────────────────
+if [[ "$MOCK_MODE" == "false" ]]; then
+  echo "Checking docker image per strands-documentation-analyzer..."
+  if ! docker image inspect strands-documentation-analyzer >/dev/null 2>&1; then
+    echo "Building docker image strands-documentation-analyzer..."
+    (cd "$ANALYSIS_DIR" && docker build -t strands-documentation-analyzer -f infra/docker/Dockerfile.documentation .)
+  else
+    echo "Docker image strands-documentation-analyzer already exists."
   fi
 fi
 

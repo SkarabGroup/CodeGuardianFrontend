@@ -32,33 +32,22 @@ export const repositoriesApi = {
   },
 
   startAnalysis: async (
-    id: string,
+    _id: string,
     payload?: { areas?: AnalysisArea[]; branch?: string; commitHash?: string; repositoryUrl?: string },
   ): Promise<{ analysisId: string }> => {
-    // Il backend espone POST /analysis/start con repositoryUrl nel body.
-    // Se repositoryUrl non è fornito, fallback al path legacy per compatibilità mock/sviluppo locale.
-    if (payload?.repositoryUrl) {
-      const { data } = await gateway.post('/analysis/start', {
-        repositoryUrl: payload.repositoryUrl,
-        branch: payload.branch ?? 'main',
-        commitHash: payload.commitHash ?? null,
-      })
-      return data
-    }
-    const { data } = await gateway.post(`/analysis/repositories/${id}/analyze`, {
-      areas: payload?.areas,
+    const areas = payload?.areas ?? ['code', 'security', 'documentation']
+    const { data } = await gateway.post('/analysis/start', {
+      repoUrl: payload?.repositoryUrl,
       branch: payload?.branch ?? 'main',
-      commitHash: payload?.commitHash ?? null,
+      commit: payload?.commitHash ?? undefined,
+      requestedCode: areas.includes('code'),
+      requestedSecurity: areas.includes('security'),
+      requestDocumentation: areas.includes('documentation'),
     })
-    return data
+    return { analysisId: (data as { id?: string }).id ?? '' }
   },
 
-  getAnalysis: async (id: string): Promise<Analysis> => {
-    const { data } = await gateway.get(`/analysis/reports/${id}`)
-    return data
-  },
-
-  getHistory: async (id: string, params?: { page?: number; limit?: number }): Promise<PaginatedResponse<import('@/types').Analysis>> => {
+  getHistory: async (id: string, params?: { page?: number; limit?: number }): Promise<PaginatedResponse<Analysis>> => {
     const { data } = await gateway.get(`/analysis/repositories/${id}/history`, { params })
     return data
   },

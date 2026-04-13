@@ -185,7 +185,7 @@ function PasswordSection() {
 
   const onSubmit = async (data: PasswordForm) => {
     try {
-      await usersApi.changePassword({ currentPassword: data.currentPassword, newPassword: data.newPassword })
+      await usersApi.changePassword(data.newPassword)
       toast.success('Password aggiornata')
       reset()
     } catch {

@@ -40,9 +40,9 @@ export function setupMocks() {
     return [200, { ...MOCK_USER, ...body }]
   })
 
-  mock.onPut('/account/users/password').reply(204)
+  mock.onPatch('/account/auth/update').reply(204)
 
-  mock.onDelete('/account/users/account').reply(204)
+  mock.onDelete('/account/users/me').reply(204)
 
   mock.onPost('/account/users/api-key/generate').reply(200, { apiKey: MOCK_API_KEY })
 
@@ -71,11 +71,6 @@ export function setupMocks() {
 
     mock.onDelete(`/analysis/repositories/${repo.id}`).reply(204)
 
-    mock.onPost(`/analysis/repositories/${repo.id}/analyze`).reply(200, {
-      analysisId: `ana_mock_${Date.now()}`,
-    })
-
-
     // History per singola repo
     const repoHistory = MOCK_HISTORY.items.filter(a => a.repositoryId === repo.id)
     mock.onGet(`/analysis/repositories/${repo.id}/history`).reply(200, {
@@ -95,10 +90,15 @@ export function setupMocks() {
 
   // Endpoint reale del backend: POST /analysis/start
   mock.onPost('/analysis/start').reply((config) => {
-    const body = JSON.parse(config.data ?? '{}') as { repositoryUrl?: string; branch?: string }
-    const repo = MOCK_REPOS.find(r => r.url === body.repositoryUrl)
+    const body = JSON.parse(config.data ?? '{}') as { repoUrl?: string; branch?: string }
+    const repo = MOCK_REPOS.find(r => r.url === body.repoUrl)
     return [200, {
-      analysisId: `ana_mock_${Date.now()}`,
+      id: `ana_mock_${Date.now()}`,
+      user: MOCK_USER.id,
+      url: body.repoUrl,
+      branch: body.branch ?? 'main',
+      commit: 'mock-commit-sha',
+      errorMessage: 'Analysis Started Successfully',
       path: `/tmp/cg-clone/${repo?.id ?? 'unknown'}`,
     }]
   })
