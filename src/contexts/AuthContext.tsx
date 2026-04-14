@@ -26,12 +26,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(profile)
     } catch (err: unknown) {
       // 404 = endpoint not yet implemented: keep token, just don't restore user
+      // timeout/ECONNABORTED = endpoint hangs because completely missing
       // 401 = token invalid: clear session
-      const status = (err as { response?: { status?: number } })?.response?.status
-      if (status !== 404) {
-        setUser(null)
-        tokenStorage.clear()
+      const isRecord = err && typeof err === 'object';
+      const response = isRecord ? (err as Record<string, unknown>).response as Record<string, unknown> : undefined;
+      const status = response ? (response.status as number) : undefined;
+      const code = isRecord ? (err as Record<string, unknown>).code as string : undefined;
+      const message = isRecord ? (err as Record<string, unknown>).message as string : undefined;
+      const isBlockOrTimeout = code === 'ECONNABORTED' || message?.includes('timeout') || !status
+
+      if (status === 404 || isBlockOrTimeout) {
+        const token = tokenStorage.getAccess()
+        if (token) {
+          try {
+            const base64Url = token.split('.')[1]
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+            const payload = JSON.parse(window.atob(base64))
+            setUser({
+              id: payload.sub || 'fallback-id',
+              email: payload.email || '',
+              username: payload.username || payload.email?.split('@')[0] || '',
+              createdAt: new Date().toISOString()
+            })
+            return // successly restored locally
+          } catch {
+            // invalid token payload, drop down
+          }
+        }
       }
+
+      setUser(null)
+      tokenStorage.clear()
     }
   }, [])
 

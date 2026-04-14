@@ -1,6 +1,6 @@
 # Stato endpoint microservizi
 
-> Ultimo aggiornamento: 2026-04-13 (rev 10 — PR #66 mergiata in `develop`: doc-agent attivo, `OrchestratorService` non è più placeholder)
+> Ultimo aggiornamento: 2026-04-14 (rev 11 — PR #68 e #69 mergiate in `develop`: save del doc-report su MongoDB e doc-agent response model aggiunti)
 
 ---
 
@@ -55,10 +55,12 @@ Usare `./dev.sh` dal frontend per avviare tutto. `./dev.sh --mock` per modalità
 
 ## Analysis Microservice (`localhost:3002`)
 
-> **Stato branch al 2026-04-13 17:07** — PR #66 mergiata in `develop` durante la sessione odierna.
+> **Stato branch al 2026-04-14** — PR #68 e #69 mergiate in `develop`.
 >
 > **In `develop` (tutti i merge recenti):**
-> - PR #66 (`feature/documentation-report.entity`) — **appena mergiato**: entità `DocumentationReport` + 10 value objects (ApiViolation, DocsDiscrepancy, MissingFile, DependencyAudit…) + `DocumentationAnalysisAdapter` che lancia il container Docker `strands-documentation-analyzer`. **`OrchestratorService` non è più un placeholder**: chiama realmente `documentationAgent.runAnalysis()` ad ogni `POST /analysis/start` con `requestDocumentation: true`.
+> - PR #69 (`feature/saveDocReport`) — aggiunta della persistenza per i Documentation Report (DocReport ora viene salvato su MongoDB).
+> - PR #68 (`feature/docs-agent-response-model`) — aggiunta del `DocsAgentResponseModel` e fix sull'entità `GitHubAnalysis`.
+> - PR #66 (`feature/documentation-report.entity`) — entità `DocumentationReport` + 10 value objects (ApiViolation, DocsDiscrepancy, MissingFile, DependencyAudit…) + `DocumentationAnalysisAdapter` che lancia il container Docker `strands-documentation-analyzer`. **`OrchestratorService` non è più un placeholder**: chiama realmente `documentationAgent.runAnalysis()` ad ogni `POST /analysis/start` con `requestDocumentation: true`.
 > - PR #65 (`feature/code-report-save`): porta MongoDB `ICodeReportSavePort` in develop. Nessun endpoint HTTP nuovo.
 > - PR #63 (`feature/github-analysis-save`): fix save `GitHubAnalysis` su MongoDB.
 > - PR #64 (`feature/code-agent`): `CodeAnalysisAdapter` registrato nel modulo ma **commentato** nell'Orchestrator — il code agent non viene ancora chiamato.
@@ -141,7 +143,7 @@ Usare `./dev.sh` dal frontend per avviare tutto. `./dev.sh --mock` per modalità
 ### Stato domain layer
 
 - `CodeReport` — entità in `develop` (PR #65); porta MongoDB `ICodeReportSavePort` attiva
-- `DocumentationReport` — entità completa **ora in `develop`** (PR #66); 10 value objects (ApiViolation, DocsDiscrepancy, MissingFile, DependencyAudit, ConfigDependency, MissingInConfigDependency, ReadmeDependency, UndocumentedDependency, VersionMismatchDependency)
+- `DocumentationReport` — entità completa in `develop` (PR #66); **salvataggio su MongoDB ora attivo** in `develop` tramite l'adapter (PR #69)
 - `SecurityReport` — entità in domain ma nessuna porta/adapter in `develop`
 - `ICodeReportSavePort` — porta MongoDB in `develop` (PR #65)
 - `OrchestratorService` — **chiama realmente `DocumentationAnalysisAdapter`** (PR #66); code-agent e security-agent commentati

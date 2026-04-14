@@ -7,36 +7,24 @@ import {
   User,
   Lock,
   Loader2,
-  Copy,
-  Check,
   Trash2,
   AlertTriangle,
 } from 'lucide-react'
 
-function GithubIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z" />
-    </svg>
-  )
-}
 import { toast } from 'sonner'
 import { usersApi } from '@/api/users'
+import { patApi } from '@/api/pat'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
 import { useNavigate } from 'react-router-dom'
 
-const profileSchema = z.object({
-  username: z
-    .string()
-    .min(4, 'Minimo 4 caratteri')
-    .max(20, 'Massimo 20 caratteri')
-    .regex(/^[a-zA-Z0-9]+$/, 'Solo lettere e numeri'),
-  email: z.string().email('Email non valida'),
+const patSchema = z.object({
+  repositoryUrl: z.string().url('Inserisci un URL GitHub valido'),
+  password: z.string().optional(),
+  personalAccessToken: z.string().min(1, 'Il PAT è richiesto'),
 })
 
 const passwordSchema = z
@@ -56,7 +44,7 @@ const passwordSchema = z
     path: ['confirmPassword'],
   })
 
-type ProfileForm = z.infer<typeof profileSchema>
+type PatForm = z.infer<typeof patSchema>
 type PasswordForm = z.infer<typeof passwordSchema>
 
 export function SettingsPage() {
@@ -74,9 +62,8 @@ export function SettingsPage() {
 
       <Tabs defaultValue="profile">
         <TabsList>
-          <TabsTrigger value="profile"><User className="h-4 w-4" />Profilo</TabsTrigger>
+          <TabsTrigger value="profile"><User className="h-4 w-4" />Profilo (PAT)</TabsTrigger>
           <TabsTrigger value="password"><Lock className="h-4 w-4" />Password</TabsTrigger>
-          <TabsTrigger value="github"><GithubIcon className="h-4 w-4" />GitHub</TabsTrigger>
           <TabsTrigger value="danger" className="data-[state=active]:text-red-400">
             <Trash2 className="h-4 w-4" />Account
           </TabsTrigger>
@@ -84,7 +71,6 @@ export function SettingsPage() {
 
         <TabsContent value="profile"><ProfileSection /></TabsContent>
         <TabsContent value="password"><PasswordSection /></TabsContent>
-        <TabsContent value="github"><GitHubSection /></TabsContent>
         <TabsContent value="danger"><DangerSection /></TabsContent>
       </Tabs>
     </div>
@@ -92,86 +78,81 @@ export function SettingsPage() {
 }
 
 function ProfileSection() {
-  const { user, refreshUser } = useAuth()
-  const [apiKey, setApiKey] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<ProfileForm>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: { username: user?.username ?? '', email: user?.email ?? '' },
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PatForm>({
+    resolver: zodResolver(patSchema),
+    defaultValues: { repositoryUrl: '', password: '', personalAccessToken: '' },
   })
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const onSubmit = async (data: ProfileForm) => {
+  const onSubmit = async (data: PatForm) => {
     try {
-      await usersApi.updateProfile(data)
-      await refreshUser()
-      toast.success('Profilo aggiornato')
+      if (data.password) {
+        await patApi.update({
+          repositoryUrl: data.repositoryUrl,
+          password: data.password,
+          newPersonalAccessToken: data.personalAccessToken
+        })
+      } else {
+        await patApi.add({
+          repositoryUrl: data.repositoryUrl,
+          personalAccessToken: data.personalAccessToken
+        })
+      }
+      toast.success('PAT salvato / aggiornato correttamente')
+      reset()
     } catch {
-      toast.error('Errore aggiornamento profilo')
+      toast.error('Errore durante il salvataggio del PAT')
     }
   }
 
-  const generateApiKey = async () => {
+  const doDelete = async (data: PatForm) => {
+    setIsDeleting(true)
     try {
-      const { apiKey: key } = await usersApi.generateApiKey()
-      setApiKey(key)
-      toast.success('API Key generata')
+      await patApi.delete({ repositoryUrl: data.repositoryUrl, password: data.password })
+      toast.success('PAT eliminato correttamente')
+      reset()
     } catch {
-      toast.error('Errore generazione API Key')
+      toast.error("Errore durante l'eliminazione del PAT")
+    } finally {
+      setIsDeleting(false)
     }
-  }
-
-  const copyApiKey = () => {
-    if (!apiKey) return
-    navigator.clipboard.writeText(apiKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Informazioni personali</CardTitle>
+          <CardTitle className="text-base">Personal Access Token (PAT)</CardTitle>
+          <CardDescription>Usa questa sezione per gestire il PAT di GitHub necessario per analizzare i tuoi repository.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Username</label>
-              <Input {...register('username')} />
-              {errors.username && <p className="text-xs text-red-400">{errors.username.message}</p>}
+              <label className="text-sm font-medium">Repository URL</label>
+              <Input placeholder="https://github.com/org/repo" {...register('repositoryUrl')} />
+              {errors.repositoryUrl && <p className="text-xs text-red-400">{errors.repositoryUrl.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Email</label>
-              <Input type="email" {...register('email')} />
-              {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
+              <label className="text-sm font-medium">Personal Access Token</label>
+              <Input type="password" {...register('personalAccessToken')} />
+              {errors.personalAccessToken && <p className="text-xs text-red-400">{errors.personalAccessToken.message}</p>}
             </div>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              Salva modifiche
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">API Key</CardTitle>
-          <CardDescription>Usa questa chiave per accedere alle API di CodeGuardian</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {apiKey ? (
-            <div className="flex gap-2">
-              <Input value={apiKey} readOnly className="font-mono text-xs" />
-              <Button variant="outline" size="icon" onClick={copyApiKey}>
-                {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Password di crittazione (Opzionale)</label>
+              <Input type="password" placeholder="Password PAT" {...register('password')} />
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">Inserisci se vuoi crittografare o devi sovrascrivere/eliminare un PAT già protetto.</p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button type="button" disabled={isSubmitting || isDeleting} onClick={handleSubmit(onSubmit)}>
+                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                Salva PAT
+              </Button>
+              <Button type="button" variant="destructive" disabled={isSubmitting || isDeleting} onClick={handleSubmit(doDelete)}>
+                {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                Elimina PAT
               </Button>
             </div>
-          ) : null}
-          <Button variant="outline" onClick={generateApiKey}>
-            {apiKey ? 'Rigenera API Key' : 'Genera API Key'}
-          </Button>
-          {apiKey && <p className="text-xs text-yellow-400">Attenzione: questa chiave viene mostrata una sola volta. Salvala in un posto sicuro.</p>}
+          </form>
         </CardContent>
       </Card>
     </div>
@@ -205,117 +186,21 @@ function PasswordSection() {
             <Input type="password" {...register('currentPassword')} />
             {errors.currentPassword && <p className="text-xs text-red-400">{errors.currentPassword.message}</p>}
           </div>
-          <Separator />
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Nuova password</label>
             <Input type="password" {...register('newPassword')} />
             {errors.newPassword && <p className="text-xs text-red-400">{errors.newPassword.message}</p>}
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Conferma nuova password</label>
+            <label className="text-sm font-medium">Conferma password</label>
             <Input type="password" {...register('confirmPassword')} />
             {errors.confirmPassword && <p className="text-xs text-red-400">{errors.confirmPassword.message}</p>}
           </div>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Cambia password
+            Aggiorna password
           </Button>
         </form>
-      </CardContent>
-    </Card>
-  )
-}
-
-function GitHubSection() {
-  const { user, refreshUser } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
-  const [linkPending, setLinkPending] = useState(false)
-
-  const handleLink = () => {
-    setLinkPending(true)
-  }
-
-  const handleLinkConfirm = () => {
-    setLinkPending(false)
-    // In produzione: window.location.href = oauthRedirectUrl
-    toast.info('Redirect OAuth non ancora disponibile in questo ambiente')
-  }
-
-  const handleLinkCancel = () => {
-    setLinkPending(false)
-  }
-
-  const handleUnlink = async () => {
-    if (!confirm('Scollegare il tuo account GitHub?')) return
-    setIsLoading(true)
-    try {
-      await usersApi.unlinkGithub()
-      await refreshUser()
-      toast.success('Account GitHub scollegato')
-    } catch {
-      toast.error('Errore durante la disconnessione')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <GithubIcon className="h-5 w-5" />
-          Integrazione GitHub
-        </CardTitle>
-        <CardDescription>Collega il tuo account GitHub per analizzare repository privati</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {user?.hasGithubLinked ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
-              <div className="h-2 w-2 rounded-full bg-green-400" />
-              <span className="text-sm text-green-400 font-medium">Account GitHub collegato</span>
-              {user.githubId && <span className="text-xs text-[hsl(var(--muted-foreground))] ml-auto">ID: {user.githubId}</span>}
-            </div>
-            <Button variant="outline" className="text-red-400 hover:text-red-400 hover:bg-red-500/10" onClick={handleUnlink} disabled={isLoading}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GithubIcon className="h-4 w-4" />}
-              Scollega GitHub
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] p-4">
-              <div className="h-2 w-2 rounded-full bg-[hsl(var(--muted-foreground))]" />
-              <span className="text-sm text-[hsl(var(--muted-foreground))]">Nessun account GitHub collegato</span>
-            </div>
-            {linkPending ? (
-              <div className="rounded-lg border border-[hsl(var(--border))] p-4 space-y-3">
-                <p className="text-sm font-medium">Stai per essere reindirizzato a GitHub</p>
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  CodeGuardian richiederà l'accesso in lettura ai tuoi repository per poterli analizzare. Puoi revocare l'accesso in qualsiasi momento dalle impostazioni di GitHub.
-                </p>
-                <div className="flex gap-2">
-                  <Button onClick={handleLinkConfirm}>
-                    <GithubIcon className="h-4 w-4" />
-                    Procedi con GitHub
-                  </Button>
-                  <Button variant="outline" onClick={handleLinkCancel}>
-                    Annulla
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <Button onClick={handleLink}>
-                  <GithubIcon className="h-4 w-4" />
-                  Collega GitHub
-                </Button>
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  Verrai reindirizzato a GitHub per autorizzare l'accesso.
-                </p>
-              </>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   )

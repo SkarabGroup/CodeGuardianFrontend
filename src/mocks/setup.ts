@@ -103,6 +103,11 @@ export function setupMocks() {
     }]
   })
 
+  // ── PAT (Personal Access Token) ───────────────────────────
+  mock.onPost('/analysis/pat').reply(200)
+  mock.onPut('/analysis/pat').reply(200)
+  mock.onDelete('/analysis/pat').reply(204)
+
   mock.onPost('/analysis/repositories').reply((config) => {
     const body = JSON.parse(config.data ?? '{}') as { name?: string; url?: string; description?: string }
     const newRepo = {
