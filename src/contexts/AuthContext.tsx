@@ -1,6 +1,5 @@
 import { createContext, useCallback, useEffect, useState } from 'react'
 import { authApi } from '@/api/auth'
-import { usersApi } from '@/api/users'
 import { tokenStorage } from '@/api/gateway'
 import type { User, LoginCredentials, RegisterCredentials } from '@/types'
 
@@ -21,43 +20,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshUser = useCallback(async () => {
-    try {
-      const profile = await usersApi.getProfile()
-      setUser(profile)
-    } catch (err: unknown) {
-      // 404 = endpoint not yet implemented: keep token, just don't restore user
-      // timeout/ECONNABORTED = endpoint hangs because completely missing
-      // 401 = token invalid: clear session
-      const isRecord = err && typeof err === 'object';
-      const response = isRecord ? (err as Record<string, unknown>).response as Record<string, unknown> : undefined;
-      const status = response ? (response.status as number) : undefined;
-      const code = isRecord ? (err as Record<string, unknown>).code as string : undefined;
-      const message = isRecord ? (err as Record<string, unknown>).message as string : undefined;
-      const isBlockOrTimeout = code === 'ECONNABORTED' || message?.includes('timeout') || !status
-
-      if (status === 404 || isBlockOrTimeout) {
-        const token = tokenStorage.getAccess()
-        if (token) {
-          try {
-            const base64Url = token.split('.')[1]
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-            const payload = JSON.parse(window.atob(base64))
-            setUser({
-              id: payload.sub || 'fallback-id',
-              email: payload.email || '',
-              username: payload.username || payload.email?.split('@')[0] || '',
-              createdAt: new Date().toISOString()
-            })
-            return // successly restored locally
-          } catch {
-            // invalid token payload, drop down
-          }
+    const token = tokenStorage.getAccess()
+    if (token) {
+      try {
+        const base64Url = token.split('.')[1]
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+        const payload = JSON.parse(window.atob(base64))
+        
+        // Verifica la scadenza del token (exp è in secondi)
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          throw new Error('Token expired')
         }
-      }
 
-      setUser(null)
-      tokenStorage.clear()
+        setUser({
+          id: payload.sub || 'fallback-id',
+          email: payload.email || '',
+          username: payload.username || payload.email?.split('@')[0] || '',
+          createdAt: new Date().toISOString()
+        })
+        return // successly restored locally
+      } catch (err) {
+        // invalid or expired token payload, drop down
+      }
     }
+
+    setUser(null)
+    tokenStorage.clear()
   }, [])
 
   // On mount: try to restore session

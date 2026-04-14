@@ -253,22 +253,96 @@ export function RepositoryDetailPage() {
 
             <div className="flex-1 overflow-y-auto">
               <TabsContent value="code" className="px-6 mt-0">
-                {(report.codeAnalysis?.testCoverage != null || report.codeAnalysis?.linesAnalyzed != null) && (
-                  <div className="flex gap-8 py-4 border-b border-[var(--border)] mb-2">
-                    {report.codeAnalysis.testCoverage != null && (
-                      <div>
-                        <p className="data-label mb-0.5">COPERTURA TEST</p>
-                        <p className="font-mono text-xl font-300" style={{ color: 'var(--accent)', fontFeatureSettings: '"tnum"' }}>
-                          {report.codeAnalysis.testCoverage}<span className="text-sm text-[var(--fg-3)]">%</span>
+                {(report.codeAnalysis?.testCoverage != null || report.codeAnalysis?.linesAnalyzed != null || report.codeAnalysis?.ai_interpretation) && (
+                  <div className="flex flex-col gap-4 py-4 border-b border-[var(--border)] mb-2">
+                    <div className="flex gap-8">
+                      {report.codeAnalysis.testCoverage != null && (
+                        <div>
+                          <p className="data-label mb-0.5">COPERTURA TEST</p>
+                          <p className="font-mono text-xl font-300" style={{ color: 'var(--accent)', fontFeatureSettings: '"tnum"' }}>
+                            {report.codeAnalysis.testCoverage}<span className="text-sm text-[var(--fg-3)]">%</span>
+                          </p>
+                        </div>
+                      )}
+                      
+                      {report.codeAnalysis.coverage?.overall_branch_pct != null && (
+                        <div>
+                          <p className="data-label mb-0.5">BRANCH COVERAGE</p>
+                          <p className="font-mono text-xl font-300" style={{ color: 'var(--warning)', fontFeatureSettings: '"tnum"' }}>
+                            {Math.round(report.codeAnalysis.coverage.overall_branch_pct * 100)}<span className="text-sm text-[var(--fg-3)]">%</span>
+                          </p>
+                        </div>
+                      )}
+                      
+                      {report.codeAnalysis.coverage?.overall_function_pct != null && (
+                        <div>
+                          <p className="data-label mb-0.5">FUNCTION COVERAGE</p>
+                          <p className="font-mono text-xl font-300" style={{ color: 'var(--info)', fontFeatureSettings: '"tnum"' }}>
+                            {Math.round(report.codeAnalysis.coverage.overall_function_pct * 100)}<span className="text-sm text-[var(--fg-3)]">%</span>
+                          </p>
+                        </div>
+                      )}
+
+                      {report.codeAnalysis.linesAnalyzed != null && (
+                        <div>
+                          <p className="data-label mb-0.5">RIGHE ANALIZZATE</p>
+                          <p className="font-mono text-xl font-300" style={{ color: 'var(--fg)', fontFeatureSettings: '"tnum"' }}>
+                            {report.codeAnalysis.linesAnalyzed.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {report.codeAnalysis.ai_interpretation && (
+                      <div className="mt-4 bg-[var(--surface-hover)] rounded-md p-4 border border-[var(--border)]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline" className="font-mono text-xs text-[var(--accent)] border-[var(--accent)]">
+                            AI VERDICT: {report.codeAnalysis.ai_interpretation.verdict}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-[var(--fg-2)] leading-relaxed">
+                          {report.codeAnalysis.ai_interpretation.executive_summary}
                         </p>
-                      </div>
-                    )}
-                    {report.codeAnalysis.linesAnalyzed != null && (
-                      <div>
-                        <p className="data-label mb-0.5">RIGHE ANALIZZATE</p>
-                        <p className="font-mono text-xl font-300" style={{ color: 'var(--fg)', fontFeatureSettings: '"tnum"' }}>
-                          {report.codeAnalysis.linesAnalyzed.toLocaleString()}
-                        </p>
+                        
+                        {report.codeAnalysis.ai_interpretation.coverage_evaluation?.critical_files_reasoning?.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                            <p className="data-label mb-2">FILE CRITICI (AI REASONING)</p>
+                            <div className="flex flex-col gap-3">
+                              {report.codeAnalysis.ai_interpretation.coverage_evaluation.critical_files_reasoning.map((cf, idx) => (
+                                <div key={idx} className="text-xs bg-[var(--bg)] p-3 border border-[var(--border)] rounded">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-mono text-[var(--danger)]">{cf.file}</span>
+                                    <span className="font-mono opacity-80">{Math.round(cf.line_coverage_pct * 100)}%</span>
+                                  </div>
+                                  <p className="text-[var(--fg-3)] mt-1">{cf.ai_reasoning}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {report.codeAnalysis.ai_interpretation.static_analysis_evaluation?.key_issues_reasoning?.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                            <p className="data-label mb-2">KEY ISSUES (AI REASONING)</p>
+                            <div className="flex flex-col gap-3">
+                              {report.codeAnalysis.ai_interpretation.static_analysis_evaluation.key_issues_reasoning.map((ki, idx) => (
+                                <div key={idx} className="text-xs bg-[var(--bg)] p-3 border border-[var(--border)] rounded">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Badge variant="outline" className="border-[var(--danger)] text-[var(--danger)] rounded-sm px-1.5 py-0">
+                                      {ki.severity}
+                                    </Badge>
+                                    <span className="font-mono text-[var(--fg)]">{ki.file}:{ki.location?.line_start ?? '?'}</span>
+                                  </div>
+                                  <p className="text-[var(--fg-2)] font-medium mb-1">{ki.original_description}</p>
+                                  <p className="text-[var(--fg-3)] italic">"{ki.ai_reasoning}"</p>
+                                  {ki.suggested_resolution && (
+                                    <p className="text-[var(--accent)] mt-1.5 flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3"/>{ki.suggested_resolution}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -362,7 +436,14 @@ function IssuesList({ issues, emptyMsg }: { issues: Issue[]; emptyMsg: string })
             }}
           >
             <div className="flex items-start justify-between gap-4 mb-1">
-              <span className="font-body text-sm font-medium text-[var(--fg)]">{issue.title}</span>
+              <span className="font-body text-sm font-medium text-[var(--fg)]">
+                {issue.title}
+                {issue.url && (
+                  <a href={issue.url} target="_blank" rel="noopener noreferrer" className="inline-flex ml-1.5 align-middle text-[var(--fg-3)] hover:text-[var(--accent)] transition-colors">
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </span>
               <div className="flex items-center gap-1.5 shrink-0">
                 {issue.category && (
                   <span
@@ -391,9 +472,17 @@ function IssuesList({ issues, emptyMsg }: { issues: Issue[]; emptyMsg: string })
               </div>
             </div>
             <p className="text-xs text-[var(--fg-3)] font-light mb-1">{issue.description}</p>
+            {issue.suggested_fix && (
+              <div className="mt-2 mb-2 p-2 bg-[#1b1c1e] border border-[var(--border)] rounded-md font-mono text-[10px] text-[var(--fg-2)] whitespace-pre-wrap overflow-x-auto">
+                <span className="text-[var(--success)] mr-2">fix:</span>
+                {issue.suggested_fix}
+              </div>
+            )}
             {issue.file && (
-              <p className="font-mono text-[10px] text-[var(--fg-3)]">
-                {issue.file}{issue.line ? `:${issue.line}` : ''}
+              <p className="font-mono text-[10px] text-[var(--fg-3)] mt-1.5">
+                {issue.file}
+                {issue.line ? `:${issue.line}` : ''}
+                {issue.location ? `:${issue.location.line_start}` : ''}
               </p>
             )}
           </div>

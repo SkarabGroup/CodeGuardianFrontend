@@ -253,7 +253,6 @@ describe('extractRepoName', () => {
   it('returns the url unchanged on internal error', () => {
     // Force the catch branch: override String.prototype.replace temporarily
     const original = String.prototype.replace
-    // @ts-expect-error -- intentional override for test coverage
     String.prototype.replace = () => { throw new Error('forced') }
     try {
       const result = extractRepoName('https://github.com/org/repo')

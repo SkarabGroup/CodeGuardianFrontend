@@ -35,6 +35,48 @@ function makeReport(opts: {
     warningIssues:      opts.warnings,
     infoIssues:         opts.infos,
     codeAnalysis: {
+      testCoverage: Math.round((Math.random() * 40) + 40),
+      linesAnalyzed: Math.round((Math.random() * 50000) + 10000),
+      ai_interpretation: {
+        verdict: opts.quality > 80 ? 'Good' : opts.quality > 60 ? 'Fair' : 'Poor',
+        executive_summary: 'Overall the codebase is structured well, but test coverage is lacking in core business directories.',
+        static_analysis_evaluation: {
+          total_issues_analyzed: 45,
+          key_issues_reasoning: [
+            {
+              file: 'src/services/billing.ts',
+              location: { line_start: 42, line_end: 50, column: 2 },
+              rule: 'complexity',
+              severity: 'critical',
+              original_description: 'Function processPayment is too complex',
+              ai_reasoning: 'The function handles too many conditions (card, paypal, crypto) in a single flow, violating SRP.',
+              suggested_resolution: 'Extract payment strategies into separate classes.'
+            }
+          ]
+        },
+        coverage_evaluation: {
+          overall_health: 'Test coverage leaves payment flow vulnerable.',
+          critical_files_reasoning: [
+            {
+              file: 'src/services/billing.ts',
+              line_coverage_pct: 0.15,
+              missing_branches: 12,
+              missing_lines: [44, 45, 46, 50, 60],
+              ai_reasoning: 'Core billing logic is missing edge-case unit tests.'
+            }
+          ]
+        }
+      },
+      coverage: {
+        language: 'typescript',
+        tool: 'jest',
+        overall_line_pct: (Math.random() * 0.40) + 0.40,
+        overall_branch_pct: (Math.random() * 0.30) + 0.30,
+        overall_function_pct: (Math.random() * 0.50) + 0.50,
+        files: [],
+        test_summary: null,
+        uncovered_files: []
+      },
       issues: [
         {
           title: 'Funzione con complessità ciclomatica elevata',

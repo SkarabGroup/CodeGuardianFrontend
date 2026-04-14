@@ -40,6 +40,15 @@ export interface Issue {
   file?: string
   line?: number
   category?: string
+  
+  // Nuovi campi introdotti dal Code/Security/Doc Agent
+  suggested_fix?: string
+  url?: string
+  location?: {
+    line_start: number
+    line_end: number
+    column: number
+  }
 }
 
 export interface Remediation {
@@ -65,11 +74,85 @@ export interface ExecutionMetrics {
   completed_at: string
 }
 
+export interface CodeAgentStaticIssueLocation {
+  line_start: number
+  line_end: number
+  column: number
+}
+
+export interface CodeAgentStaticIssue {
+  file: string
+  location: CodeAgentStaticIssueLocation
+  rule: string
+  category: string
+  severity: string
+  description: string
+  suggested_fix: string
+  url: string
+}
+
+export interface AIKeyIssueReasoning {
+  file: string
+  location: CodeAgentStaticIssueLocation
+  rule: string
+  severity: string
+  original_description: string
+  ai_reasoning: string
+  suggested_resolution: string
+}
+
+export interface AICriticalFileReasoning {
+  file: string
+  line_coverage_pct: number
+  missing_lines: number[]
+  missing_branches: number
+  ai_reasoning: string
+}
+
+export interface AIInterpretation {
+  verdict: 'Critical' | 'Poor' | 'Fair' | 'Good' | 'Excellent' | string
+  executive_summary: string
+  static_analysis_evaluation: {
+    total_issues_analyzed: number
+    key_issues_reasoning: AIKeyIssueReasoning[]
+  }
+  coverage_evaluation: {
+    overall_health: string
+    critical_files_reasoning: AICriticalFileReasoning[]
+  }
+}
+
 export interface CodeAnalysisSection {
+  // Legacy / Mapped standard fields
   issues: Issue[]
   testCoverage?: number
   linesAnalyzed?: number
   summary?: string
+
+  // New Code Agent Fields
+  metadata?: {
+    repository: string
+    project_root?: string
+    language?: string
+    status: string
+  }
+  static_analysis?: {
+    language: string
+    tool: string
+    total: number
+    issues: CodeAgentStaticIssue[]
+  }
+  coverage?: {
+    language: string
+    tool: string
+    overall_line_pct: number
+    overall_branch_pct: number
+    overall_function_pct: number
+    files: any[]
+    test_summary: any | null
+    uncovered_files: string[]
+  }
+  ai_interpretation?: AIInterpretation
 }
 
 export interface SecurityAnalysisSection {

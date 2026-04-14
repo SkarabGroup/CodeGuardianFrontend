@@ -67,7 +67,7 @@ export function truncate(str: string, maxLen: number): string {
 export function extractRepoName(url: string): string {
   try {
     const parts = url.replace(/\.git$/, '').split('/')
-    return parts.at(-1) ?? url
+    return parts[parts.length - 1]
   } catch {
     return url
   }

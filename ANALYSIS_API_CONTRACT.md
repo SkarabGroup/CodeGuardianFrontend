@@ -138,11 +138,13 @@ Tutti gli score sono **interi 0–100**. `documentationScore` è opzionale.
 
 ## `codeAnalysis`
 
+Attenzione: la struttura è stata pesantemente ampliata a seguito dell'introduzione del nuovo `CodeAgentReport.entity` nel backend. I vecchi campi possono coesistere o essere derivati dai nuovi campi generati dall'AI.
+
 ```json
 {
   "testCoverage": 67,
   "linesAnalyzed": 12480,
-  "summary": "Testo descrittivo opzionale",
+  "summary": "Analisi AI: fair",
   "issues": [
     {
       "id": "issue_001",
@@ -153,11 +155,58 @@ Tutti gli score sono **interi 0–100**. `documentationScore` è opzionale.
       "line": 142,
       "category": "complexity"
     }
-  ]
+  ],
+  "ai_interpretation": {
+    "verdict": "Fair",
+    "executive_summary": "Il codice presenta una copertura accettabile ma ci sono vulnerabilità critiche...",
+    "static_analysis_evaluation": {
+      "total_issues_analyzed": 45,
+      "key_issues_reasoning": [
+        {
+          "file": "src/payments/processor.ts",
+          "location": { "line_start": 142, "line_end": 150, "column": 4 },
+          "rule": "complexity",
+          "severity": "critical",
+          "original_description": "Complex function",
+          "ai_reasoning": "La funzione è troppo lunga...",
+          "suggested_resolution": "Estrazione in sotto-funzioni."
+        }
+      ]
+    },
+    "coverage_evaluation": {
+      "overall_health": "Accettabile, ma mancano test di integrazione critici.",
+      "critical_files_reasoning": [
+        {
+          "file": "src/auth/auth.service.ts",
+          "line_coverage_pct": 20.5,
+          "missing_lines": [45, 46, 47],
+          "missing_branches": 4,
+          "ai_reasoning": "Componente di auth con fallimenti su ramificazioni critiche."
+        }
+      ]
+    }
+  },
+  "static_analysis": {
+    "language": "typescript",
+    "tool": "eslint",
+    "total": 45,
+    "issues": [ ... ]
+  },
+  "coverage": {
+    "language": "typescript",
+    "tool": "jest",
+    "overall_line_pct": 0.67,
+    "overall_branch_pct": 0.55,
+    "overall_function_pct": 0.70,
+    "files": [ ... ],
+    "test_summary": null,
+    "uncovered_files": []
+  }
 }
 ```
 
 `testCoverage` deve essere **intero 0–100** (il VO interno usa 0–1, il backend deve convertire prima di serializzare).
+I campi di coverage interni ad `ai_interpretation` e `coverage` del nuovo agente contano con range **0–1 float / `line_coverage_pct`**. Il backend e frontend dovranno eventualmente unificarlo sul 0-100.
 
 `file` deve essere un path relativo conforme al VO `PathFinding` (no leading `/`, solo forward slash, no `..`).
 

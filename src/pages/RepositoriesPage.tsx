@@ -257,6 +257,7 @@ export function RepositoriesPage() {
           onOpenChange={open => !open && setAnalyzeTarget(null)}
           repositoryId={analyzeTarget.id}
           repositoryName={analyzeTarget.name}
+          repositoryUrl={analyzeTarget.url}
           onStarted={() => {
             setRepos(prev =>
               prev.map(r => r.id === analyzeTarget.id
