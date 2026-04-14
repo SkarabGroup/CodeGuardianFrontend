@@ -78,7 +78,7 @@ export function Sidebar() {
             <p className="font-display text-sm font-700 tracking-tight text-[var(--fg)] leading-none">
               Code<span className="text-[var(--accent)]">Guardian</span>
             </p>
-            <p className="data-label mt-0.5">v1.0 · beta</p>
+            <p className="data-label mt-0.5">v1.0 · {new Date().getFullYear()}</p>
           </div>
         )}
       </div>

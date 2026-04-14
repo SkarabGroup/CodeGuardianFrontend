@@ -110,8 +110,6 @@ function makeReport(opts: {
           category: 'coverage',
         },
       ],
-      testCoverage: 67,
-      linesAnalyzed: 12480,
     },
     securityAnalysis: {
       issues: [

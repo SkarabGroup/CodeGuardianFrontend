@@ -135,10 +135,9 @@ export function LandingPage() {
           <div className="animate-fade-up flex items-center gap-3 mb-8">
             <span className="data-label">CODEGUARDIAN · v1.0</span>
             <span className="h-px flex-1 max-w-[60px] bg-[var(--border-mid)]" />
-            <span className="data-label text-[var(--accent)]">BETA · 2025</span>
-          </div>
-
-          {/* Headline — oversized, Syne 800 */}
+              <span className="data-label text-[var(--accent)]">{new Date().getFullYear()}</span>
+            </div>
+            {/* Headline — oversized, Syne 800 */}
           <h1
             className="animate-fade-up delay-100 font-display font-800 text-[var(--fg)] leading-[0.92] tracking-[-0.04em]"
             style={{ fontSize: 'clamp(52px, 9vw, 104px)' }}
