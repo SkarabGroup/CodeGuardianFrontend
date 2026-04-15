@@ -222,8 +222,6 @@ function DangerSection() {
 
     setIsLoading(true)
     try {
-      // Per validare la password dal frontend senza endpoint appositi, 
-      // facciamo un tentativo di login "silenzioso".
       if (user?.email) {
          try {
            await authApi.login({ email: user.email, password })
