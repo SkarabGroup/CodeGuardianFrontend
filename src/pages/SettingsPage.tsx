@@ -12,7 +12,9 @@ import {
 } from 'lucide-react'
 
 import { toast } from 'sonner'
+
 import { usersApi } from '@/api/users'
+import { authApi } from '@/api/auth'
 import { patApi } from '@/api/pat'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
@@ -207,18 +209,31 @@ function PasswordSection() {
 }
 
 function DangerSection() {
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
-  const [confirmText, setConfirmText] = useState('')
+  const [password, setPassword] = useState('')
 
   const handleDelete = async () => {
-    if (confirmText !== 'ELIMINA') {
-      toast.error('Scrivi ELIMINA per confermare')
+    if (!password) {
+      toast.error('Inserisci la password per confermare')
       return
     }
+
     setIsLoading(true)
     try {
+      // Per validare la password dal frontend senza endpoint appositi, 
+      // facciamo un tentativo di login "silenzioso".
+      if (user?.email) {
+         try {
+           await authApi.login({ email: user.email, password })
+         } catch {
+           toast.error('Password errata, riprova')
+           setIsLoading(false)
+           return
+         }
+      }
+
       await usersApi.deleteAccount()
       await logout()
       navigate('/')
@@ -246,17 +261,18 @@ function DangerSection() {
             Questa azione è irreversibile. Tutti i dati, i repository e le analisi verranno eliminati permanentemente.
           </p>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Scrivi <code className="text-red-400">ELIMINA</code> per confermare</label>
+            <label className="text-sm font-medium">Inserisci la tua password per confermare</label>
             <Input
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="ELIMINA"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="La tua password"
               className="border-red-500/20"
             />
           </div>
           <Button
             variant="destructive"
-            disabled={confirmText !== 'ELIMINA' || isLoading}
+            disabled={!password || isLoading}
             onClick={handleDelete}
           >
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
