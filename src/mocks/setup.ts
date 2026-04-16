@@ -123,8 +123,24 @@ export function setupMocks() {
   })
 
   // ── Analysis reports ──────────────────────────────────────
+  mock.onGet('/analysis/one').reply((config) => {
+    const body = JSON.parse(config.data ?? '{}') as { analysisId?: string }
+    const analysis = MOCK_HISTORY.items.find(a => a.id === body.analysisId)
+    if (!analysis) return [404, { success: false, message: 'Analysis not found' }]
+    return [200, {
+      success: true,
+      analysisId: analysis.id,
+      repoURL: MOCK_REPOS.find(r => r.id === analysis.repositoryId)?.url ?? '',
+      branch: analysis.branch ?? 'main',
+      commit: analysis.commitHash ?? null,
+      status: analysis.status,
+      createdAt: analysis.date,
+      updatedAt: analysis.date,
+      docsReportJson: analysis.report?.documentationAnalysis?.report ?? null,
+    }]
+  })
+
   MOCK_HISTORY.items.forEach(analysis => {
-    mock.onGet(`/analysis/reports/${analysis.id}`).reply(200, analysis)
 
     mock.onGet(`/analysis/reports/${analysis.id}/export`).reply(200, new Blob(['mock export'], { type: 'application/octet-stream' }))
 

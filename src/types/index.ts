@@ -162,11 +162,72 @@ export interface SecurityAnalysisSection {
   summary?: string
 }
 
+export interface DocsApiViolation {
+  file: string
+  rule: string
+  severity: string
+  message: string
+}
+
+export interface DocsDiscrepancy {
+  category: string
+  documentation_source: string
+  docs_claim: string
+  actual_finding: string
+  severity: string
+}
+
+export interface DocsMissingFile {
+  referenced_path: string
+  referenced_in: string
+  context: string
+  status: string
+}
+
+export interface DocsDependencyEntry {
+  name: string
+  version_pinned: string | null
+  source_file: string
+}
+
+export interface DocsUndocumentedDependency {
+  name: string
+  found_in: string
+}
+
+export interface DocsMissingInConfig {
+  name: string
+  source_file?: string
+  documented_in?: string
+  severity: string
+}
+
+export interface DocsVersionMismatch extends DocsDependencyEntry {
+  config_version?: string
+}
+
+export interface DocsDependencyAudit {
+  readme_defined: DocsDependencyEntry[]
+  config_defined: DocsDependencyEntry[]
+  missing_in_config: DocsMissingInConfig[]
+  undocumented_in_readme: DocsUndocumentedDependency[]
+  version_mismatches: DocsVersionMismatch[]
+}
+
+export interface DocsAnalysisReport {
+  metadata: { repository: string; status: string }
+  API_standard_violations: DocsApiViolation[]
+  docs_discrepancies: DocsDiscrepancy[]
+  missing_files: DocsMissingFile[]
+  dependency_audit: DocsDependencyAudit
+}
+
 export interface DocumentationAnalysisSection {
   issues: Issue[]
   completenessScore?: number
   coherenceScore?: number
   summary?: string
+  report?: DocsAnalysisReport
 }
 
 export interface AnalysisReport {
