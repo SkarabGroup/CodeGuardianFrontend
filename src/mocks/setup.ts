@@ -151,7 +151,18 @@ export function setupMocks() {
   })
 
   // Global history
-  mock.onGet('/analysis/history').reply(200, MOCK_HISTORY)
+  mock.onGet('/analysis/all').reply(200, {
+    success: true,
+    analyses: MOCK_HISTORY.items.map(a => ({
+      analysisId: a.id,
+      repoURL: '',
+      branch: a.branch ?? 'main',
+      commit: a.commitHash ?? '',
+      status: (a.status ?? 'pending').toUpperCase().replace(/-/g, '_'),
+      createdAt: a.date,
+      updatedAt: a.date,
+    })),
+  })
 
   console.info(
     '%c[CodeGuardian Mock] %cModalità demo attiva — nessun backend necessario.',

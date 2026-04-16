@@ -31,9 +31,27 @@ export const analysisApi = {
     }
   },
 
-  getHistory: async (params?: { page?: number; limit?: number; repositoryId?: string }): Promise<PaginatedResponse<Analysis>> => {
-    const { data } = await gateway.get('/analysis/history', { params })
-    return data
+  getHistory: async (_params?: { page?: number; limit?: number; repositoryId?: string }): Promise<PaginatedResponse<Analysis>> => {
+    const { data } = await gateway.get('/analysis/all')
+    const raw = data as {
+      success: boolean
+      analyses?: Array<{
+        analysisId: string
+        repoURL?: string
+        branch?: string
+        commit?: string
+        status?: string
+        createdAt?: string
+      }>
+    }
+    const items: Analysis[] = (raw.analyses ?? []).map(item => ({
+      id: item.analysisId,
+      date: item.createdAt ?? new Date().toISOString(),
+      status: (item.status ?? 'pending') as AnalysisStatus,
+      branch: item.branch,
+      commitHash: item.commit,
+    }))
+    return { items, total: items.length, page: 1, limit: items.length, totalPages: 1 }
   },
 
   exportReport: async (id: string, format: ExportFormat): Promise<Blob> => {
