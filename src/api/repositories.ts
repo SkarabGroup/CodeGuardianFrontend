@@ -42,7 +42,7 @@ export const repositoriesApi = {
       commit: payload?.commitHash ?? undefined,
       requestedCode: areas.includes('code'),
       requestedSecurity: areas.includes('security'),
-      requestDocumentation: areas.includes('documentation'),
+      requestedDocumentation: areas.includes('documentation'),
     })
     return { analysisId: (data as { id?: string }).id ?? '' }
   },
