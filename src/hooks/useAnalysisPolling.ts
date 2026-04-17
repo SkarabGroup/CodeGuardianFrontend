@@ -1,11 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { gateway } from '@/api/gateway'
 import type {
   AnalysisStartedEvent,
   AnalysisCompletedEvent,
   AnalysisFailedEvent,
   AnalysisProgressEvent,
+  AnalysisReport,
 } from '@/types'
+
+const POLL_INTERVAL = 5000
 
 interface Options {
   repositoryId?: string
@@ -15,31 +18,75 @@ interface Options {
   onFailed?: (e: AnalysisFailedEvent) => void
 }
 
-export function useAnalysisPolling(options: Options = {}) {
-  const { repositoryId, _onStarted: __onStarted, _onProgress: __onProgress, _onCompleted: __onCompleted, _onFailed: __onFailed } = {
-    _onStarted: options.onStarted,
-    _onProgress: options.onProgress,
-    _onCompleted: options.onCompleted,
-    _onFailed: options.onFailed,
-    ...options
-  }
+export function useAnalysisPolling({
+  repositoryId,
+  onStarted,
+  onProgress,
+  onCompleted,
+  onFailed,
+}: Options = {}) {
+  // Keep callbacks current without restarting the interval
+  const cbRef = useRef({ onStarted, onProgress, onCompleted, onFailed })
+  useEffect(() => { cbRef.current = { onStarted, onProgress, onCompleted, onFailed } })
+
+  const prevStatuses = useRef<Map<string, string>>(new Map())
+  const syntheticProgress = useRef<Map<string, number>>(new Map())
+  const initialized = useRef(false)
 
   useEffect(() => {
-    // Il websocket è stato rimpiazzato da un semplice polling globale sullo stato
-    const interval = setInterval(async () => {
+    const poll = async () => {
       try {
         const { data } = await gateway.get('/analysis/all')
-        if (data && data.success && Array.isArray(data.analyses)) {
-          // I controlli qua andrebbero implementati mappando lo stato precedente 
-          // per notificare completamenti o progressi veri
-          // Per ora il polling in background basta per far risvegliare componenti come SWR / refetch
-          // (Se usi SWR o react-query, preferisci il loro polling builtin nativo).
-        }
-      } catch (err) {
-        /* silent poll fail */
-      }
-    }, 10000)
+        if (!data?.success || !Array.isArray(data.analyses)) return
 
-    return () => clearInterval(interval)
+        const { onStarted, onProgress, onCompleted, onFailed } = cbRef.current
+
+        for (const item of data.analyses as Array<{ analysisId: string; status: string }>) {
+          const { analysisId, status } = item
+          const prev = prevStatuses.current.get(analysisId)
+          const repoId = repositoryId ?? ''
+
+          if (!initialized.current) {
+            prevStatuses.current.set(analysisId, status)
+            continue
+          }
+
+          if (prev === status) {
+            if (status === 'in-progress' && onProgress) {
+              const p = Math.min((syntheticProgress.current.get(analysisId) ?? 10) + 8, 90)
+              syntheticProgress.current.set(analysisId, p)
+              onProgress({ repositoryId: repoId, analysisId, progress: p })
+            }
+            continue
+          }
+
+          prevStatuses.current.set(analysisId, status)
+
+          if (status === 'in-progress') {
+            syntheticProgress.current.set(analysisId, 10)
+            onStarted?.({ repositoryId: repoId, analysisId })
+          } else if (status === 'completed') {
+            syntheticProgress.current.delete(analysisId)
+            onCompleted?.({ repositoryId: repoId, analysisId, report: {} as AnalysisReport })
+          } else if (status === 'failed') {
+            syntheticProgress.current.delete(analysisId)
+            onFailed?.({ repositoryId: repoId, analysisId, error: '' })
+          }
+        }
+
+        initialized.current = true
+      } catch {
+        // silent poll fail
+      }
+    }
+
+    poll()
+    const interval = setInterval(poll, POLL_INTERVAL)
+    return () => {
+      clearInterval(interval)
+      initialized.current = false
+      prevStatuses.current.clear()
+      syntheticProgress.current.clear()
+    }
   }, [repositoryId])
 }
