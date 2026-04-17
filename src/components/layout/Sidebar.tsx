@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react'
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   GitBranch,
@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { SocketContext } from '@/contexts/SocketContext'
 import { toast } from 'sonner'
 
 const navItems = [
@@ -45,7 +44,6 @@ function ShieldMark({ size = 20 }: { size?: number }) {
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { user, logout } = useAuth()
-  const { isConnected } = useContext(SocketContext)
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -86,23 +84,12 @@ export function Sidebar() {
       {/* ── Connection status ────────────────── */}
       {!collapsed && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--border)]">
-          <span
-            className={cn(
-              'led',
-              isConnected
-                ? 'bg-[var(--success)] shadow-[0_0_4px_var(--success)]'
-                : 'bg-[var(--fg-3)]',
-            )}
-          />
-          <span className="data-label">
-            {isConnected ? 'live · connected' : 'disconnected'}
+          <span className="led bg-[var(--success)] shadow-[0_0_4px_var(--success)]" />
+          <span className="data-label">live · polling</span>
+          <span className="relative ml-auto flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-[var(--success)] opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
           </span>
-          {isConnected && (
-            <span className="relative ml-auto flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-[var(--success)] opacity-60" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
-            </span>
-          )}
         </div>
       )}
 

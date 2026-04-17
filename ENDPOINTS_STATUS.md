@@ -60,7 +60,7 @@ Usare `./dev.sh` dal frontend per avviare tutto. `./dev.sh --mock` per modalità
 > **In `develop` (tutti i merge recenti):**
 > - PR #69 (`feature/saveDocReport`) — aggiunta della persistenza per i Documentation Report (DocReport ora viene salvato su MongoDB).
 > - PR #68 (`feature/docs-agent-response-model`) — aggiunta del `DocsAgentResponseModel` e fix sull'entità `GitHubAnalysis`.
-> - PR #66 (`feature/documentation-report.entity`) — entità `DocumentationReport` + 10 value objects (ApiViolation, DocsDiscrepancy, MissingFile, DependencyAudit…) + `DocumentationAnalysisAdapter` che lancia il container Docker `strands-documentation-analyzer`. **`OrchestratorService` non è più un placeholder**: chiama realmente `documentationAgent.runAnalysis()` ad ogni `POST /analysis/start` con `requestDocumentation: true`.
+> - PR #66 (`feature/documentation-report.entity`) — entità `DocumentationReport` + 10 value objects (ApiViolation, DocsDiscrepancy, MissingFile, DependencyAudit…) + `DocumentationAnalysisAdapter` che lancia il container Docker `strands-documentation-analyzer`. **`OrchestratorService` non è più un placeholder**: chiama realmente `documentationAgent.runAnalysis()` ad ogni `POST /analysis/start` con `requestedDocumentation: true`.
 > - PR #65 (`feature/code-report-save`): porta MongoDB `ICodeReportSavePort` in develop. Nessun endpoint HTTP nuovo.
 > - PR #63 (`feature/github-analysis-save`): fix save `GitHubAnalysis` su MongoDB.
 > - PR #64 (`feature/code-agent`): `CodeAnalysisAdapter` registrato nel modulo ma **commentato** nell'Orchestrator — il code agent non viene ancora chiamato.
@@ -79,7 +79,7 @@ Usare `./dev.sh` dal frontend per avviare tutto. `./dev.sh --mock` per modalità
 | `/analysis/repositories/:id` | DELETE | ❌ mancante | |
 | `/analysis/repositories/ranking` | GET | ❌ mancante | |
 | `/analysis/repositories/:id/analyze` | POST | mock only | Usato solo nel mock frontend. Backend reale usa `/analysis/start`. |
-| `/analysis/start` | POST | ✅ allineato | Body: `{ repoUrl, password?, branch, commit, requestedCode, requestedSecurity, requestDocumentation }`. Risposta: `{ user, id, url, branch, commit, errorMessage }`. Frontend allineato. |
+| `/analysis/start` | POST | ✅ allineato | Body: `{ repoUrl, password?, branch, commit, requestedCode, requestedSecurity, requestedDocumentation }`. Risposta: `{ user, id, url, branch, commit, errorMessage }`. Frontend allineato. |
 | `/analysis/pat` | POST | ✅ reale | Mergiato in `develop` (PR #56) |
 | `/analysis/pat` | DELETE | ✅ reale | Mergiato in `develop` (PR #56) |
 | `/analysis/pat` | PUT | ✅ reale | Mergiato in `develop` (PR #56) |
@@ -100,7 +100,7 @@ Usare `./dev.sh` dal frontend per avviare tutto. `./dev.sh --mock` per modalità
   "branch": "main",
   "commit": "abc1234...",
   "requestedCode": true,
-  "requestDocumentation": true,
+  "requestedDocumentation": true,
   "requestedSecurity": true
 }
 ```
@@ -136,7 +136,7 @@ Usare `./dev.sh` dal frontend per avviare tutto. `./dev.sh --mock` per modalità
 | 4 | `GET /analysis/repositories` non implementato | Il frontend non può caricare la lista repo con backend reale |
 | 5 | `GITHUB_PUBLIC_TOKEN` non configurato | Il clone fallisce senza token. Richiede `strands-code-analyzer` Docker in esecuzione. |
 | 6 | ⚠️ Response `POST /analysis/start` ha `errorMessage` anche in caso di successo | Frontend usa `(data as { id?: string }).id` per rilevare il successo — **corretto**, ma fragile. Allinearsi col team per avere un campo `success: boolean`. |
-| 7 | 🔴 **Doc-agent ora attivo in `develop`** (PR #66 mergiata): `POST /analysis/start` con `requestDocumentation: true` tenta di avviare il container Docker `strands-documentation-analyzer` | ✅ aggiornato — `dev.sh` ora builda l'immagine (`infra/docker/Dockerfile.documentation`) se mancante; Docker deve essere in esecuzione. L'Orchestrator avvia il container al bisogno. |
+| 7 | 🔴 **Doc-agent ora attivo in `develop`** (PR #66 mergiata): `POST /analysis/start` con `requestedDocumentation: true` tenta di avviare il container Docker `strands-documentation-analyzer` | ✅ aggiornato — `dev.sh` ora builda l'immagine (`infra/docker/Dockerfile.documentation`) se mancante; Docker deve essere in esecuzione. L'Orchestrator avvia il container al bisogno. |
 | 8 | ⚠️ Security-agent (`feature/security-agent`) non ancora in `develop` | Il campo `requestedSecurity: true` non esegue nulla nell'Orchestrator. |
 | 9 | ⚠️ Code-agent (`CODE_AGENT`) registrato nel modulo ma commentato nell'Orchestrator | `requestedCode: true` non esegue nulla al momento. |
 
@@ -176,5 +176,5 @@ Usare `./dev.sh` dal frontend per avviare tutto. `./dev.sh --mock` per modalità
 ```
 
 Con backend reali, funzionano: login, register, logout, `/analysis/start` (JWT ok), PAT endpoints.  
-`/analysis/start` con `requestDocumentation: true`: l'Orchestrator avvia il container Docker `strands-documentation-analyzer` al bisogno; `dev.sh` ora builda l'immagine se mancante — assicurarsi che Docker sia in esecuzione.  
+`/analysis/start` con `requestedDocumentation: true`: l'Orchestrator avvia il container Docker `strands-documentation-analyzer` al bisogno; `dev.sh` ora builda l'immagine se mancante — assicurarsi che Docker sia in esecuzione.  
 Non funzionano: lista repository, history, reports (endpoint mancanti — usare mock mode per testare il frontend completo).

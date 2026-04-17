@@ -12,6 +12,7 @@ export const analysisApi = {
       status?: string
       createdAt?: string
       docsReportJson?: DocsAnalysisReport | null
+      fullReport?: any // Utilizzato in modalità mock per passare tutto
     }
     return {
       id: raw.analysisId ?? id,
@@ -19,7 +20,7 @@ export const analysisApi = {
       status: (raw.status ?? 'pending') as AnalysisStatus,
       branch: raw.branch,
       commitHash: raw.commit,
-      report: raw.docsReportJson ? {
+      report: raw.fullReport ? raw.fullReport : (raw.docsReportJson ? {
         qualityScore: 0,
         securityScore: 0,
         criticalIssues: 0,
@@ -27,7 +28,7 @@ export const analysisApi = {
         infoIssues: 0,
         remediations: [],
         documentationAnalysis: { issues: [], report: raw.docsReportJson },
-      } : undefined,
+      } : undefined),
     }
   },
 
@@ -35,14 +36,7 @@ export const analysisApi = {
     const { data } = await gateway.get('/analysis/all')
     const raw = data as {
       success: boolean
-      analyses?: Array<{
-        analysisId: string
-        repoURL?: string
-        branch?: string
-        commit?: string
-        status?: string
-        createdAt?: string
-      }>
+      analyses?: Array<any>
     }
     const items: Analysis[] = (raw.analyses ?? []).map(item => ({
       id: item.analysisId,
@@ -50,6 +44,7 @@ export const analysisApi = {
       status: (item.status ?? 'pending') as AnalysisStatus,
       branch: item.branch,
       commitHash: item.commit,
+      report: item.fullReport ?? undefined
     }))
     return { items, total: items.length, page: 1, limit: items.length, totalPages: 1 }
   },

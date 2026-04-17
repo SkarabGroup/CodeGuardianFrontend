@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { toast } from 'sonner'
 import { gateway } from '@/api/gateway'
 import type {
   AnalysisStartedEvent,
@@ -16,8 +15,14 @@ interface Options {
   onFailed?: (e: AnalysisFailedEvent) => void
 }
 
-export function useAnalysisSocket(options: Options = {}) {
-  const { repositoryId, onStarted, onProgress, onCompleted, onFailed } = options
+export function useAnalysisPolling(options: Options = {}) {
+  const { repositoryId, _onStarted: __onStarted, _onProgress: __onProgress, _onCompleted: __onCompleted, _onFailed: __onFailed } = {
+    _onStarted: options.onStarted,
+    _onProgress: options.onProgress,
+    _onCompleted: options.onCompleted,
+    _onFailed: options.onFailed,
+    ...options
+  }
 
   useEffect(() => {
     // Il websocket è stato rimpiazzato da un semplice polling globale sullo stato

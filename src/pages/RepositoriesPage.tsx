@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisStatusBadge } from '@/components/analysis/AnalysisStatusBadge'
 import { AddRepositoryModal } from '@/components/repository/AddRepositoryModal'
 import { AnalysisOptionsModal } from '@/components/analysis/AnalysisOptionsModal'
-import { useAnalysisSocket } from '@/hooks/useAnalysisSocket'
+import { useAnalysisPolling } from '@/hooks/useAnalysisPolling'
 import { formatDate, getScoreVar, truncate } from '@/lib/utils'
 import type { Repository } from '@/types'
 
@@ -41,7 +41,7 @@ export function RepositoriesPage() {
     return () => clearTimeout(t)
   }, [loadRepos])
 
-  useAnalysisSocket({
+  useAnalysisPolling({
     onStarted: ({ repositoryId }) => {
       setRepos(prev =>
         prev.map(r => r.id === repositoryId

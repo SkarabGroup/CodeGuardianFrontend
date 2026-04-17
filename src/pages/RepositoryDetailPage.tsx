@@ -20,7 +20,7 @@ import { Progress } from '@/components/ui/progress'
 import { ScoreCard } from '@/components/shared/ScoreCard'
 import { AnalysisStatusBadge } from '@/components/analysis/AnalysisStatusBadge'
 import { AnalysisOptionsModal } from '@/components/analysis/AnalysisOptionsModal'
-import { useAnalysisSocket } from '@/hooks/useAnalysisSocket'
+import { useAnalysisPolling } from '@/hooks/useAnalysisPolling'
 import { formatDate, formatDateShort, formatDuration, getSeverityVar } from '@/lib/utils'
 import type { Repository, Issue, Remediation, Analysis, ExportFormat } from '@/types'
 
@@ -59,7 +59,7 @@ export function RepositoryDetailPage() {
 
   useEffect(() => { load() }, [load])
 
-  useAnalysisSocket({
+  useAnalysisPolling({
     repositoryId: id,
     onStarted:   () => { setAnalysisProgress(0); load() },
     onProgress:  ({ progress }) => setAnalysisProgress(progress),

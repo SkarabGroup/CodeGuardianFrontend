@@ -137,6 +137,7 @@ export function setupMocks() {
       createdAt: analysis.date,
       updatedAt: analysis.date,
       docsReportJson: analysis.report?.documentationAnalysis?.report ?? null,
+      fullReport: analysis.report ?? null, // Espone tutto il set mock per il frontend
     }]
   })
 
@@ -155,12 +156,19 @@ export function setupMocks() {
     success: true,
     analyses: MOCK_HISTORY.items.map(a => ({
       analysisId: a.id,
-      repoURL: '',
+      repoURL: MOCK_REPOS.find(r => r.id === a.repositoryId)?.url || 'https://github.com/mock/repo',
       branch: a.branch ?? 'main',
       commit: a.commitHash ?? '',
       status: (a.status ?? 'pending').toUpperCase().replace(/-/g, '_'),
       createdAt: a.date,
       updatedAt: a.date,
+      timestamp: a.date,
+      totalIssues: (a as any).issuesCount || 0,
+      overallScore: (a as any).score || 0,
+      requestedCode: true,
+      requestedSecurity: true,
+      requestedDocumentation: true,
+      fullReport: a.report
     })),
   })
 
