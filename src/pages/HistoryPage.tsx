@@ -95,11 +95,12 @@ export function HistoryPage() {
       {!isLoading && filteredAnalyses.length > 0 && (
         <div
           className="grid border-b border-[var(--border)] px-6 py-2"
-          style={{ gridTemplateColumns: '1fr 100px 80px 80px 120px' }}
+          style={{ gridTemplateColumns: '1fr 90px 90px 90px 80px 120px' }}
         >
           <span className="data-label">DATA</span>
           <span className="data-label text-right">QUALITÀ</span>
           <span className="data-label text-right">SICUREZZA</span>
+          <span className="data-label text-right">DOCS</span>
           <span className="data-label text-right">DURATA</span>
           <span className="data-label text-right">STATO</span>
         </div>
@@ -127,14 +128,14 @@ export function HistoryPage() {
               className="grid items-center border-b border-[var(--border)] px-6 py-3 cursor-pointer
                          hover:bg-[var(--surface)] transition-colors duration-100 animate-fade-in"
               style={{
-                gridTemplateColumns: '1fr 100px 80px 80px 120px',
+                gridTemplateColumns: '1fr 90px 90px 90px 80px 120px',
                 animationDelay: `${i * 25}ms`,
               }}
-              onClick={() => a.repositoryId && navigate(`/repositories/${a.repositoryId}`)}
+              onClick={() => a.repositoryId && navigate(`/repositories/${a.repositoryId}?analysisId=${a.id}`)}
             >
               <div>
                 <p className="font-mono text-xs text-[var(--fg)]">{formatDate(a.date)}</p>
-                <p className="data-label mt-0.5">{a.repositoryId ?? '—'}</p>
+                <p className="data-label mt-0.5">{a.repositoryName ?? a.repositoryId ?? '—'}</p>
               </div>
 
               <div className="text-right">
@@ -149,6 +150,14 @@ export function HistoryPage() {
                 {a.report?.securityScore != null ? (
                   <span className="font-mono text-sm font-300" style={{ color: getScoreVar(a.report.securityScore), fontFeatureSettings: '"tnum"' }}>
                     {a.report.securityScore}
+                  </span>
+                ) : <span className="data-label">—</span>}
+              </div>
+
+              <div className="text-right">
+                {a.report?.documentationScore != null ? (
+                  <span className="font-mono text-sm font-300" style={{ color: getScoreVar(a.report.documentationScore), fontFeatureSettings: '"tnum"' }}>
+                    {a.report.documentationScore}
                   </span>
                 ) : <span className="data-label">—</span>}
               </div>

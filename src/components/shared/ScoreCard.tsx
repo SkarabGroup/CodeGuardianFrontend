@@ -3,7 +3,7 @@ import { getScoreVar } from '@/lib/utils'
 
 interface ScoreCardProps {
   label: string
-  score: number
+  score?: number | null
   icon: React.ReactNode
   description?: string
   className?: string
@@ -36,8 +36,9 @@ function GaugeTicks({ count = 20 }: { count?: number }) {
 }
 
 export function ScoreCard({ label, score, icon, description, className }: ScoreCardProps) {
-  const color = getScoreVar(score)
-  const clampedScore = Math.max(0, Math.min(100, score))
+  const isNull = score == null || isNaN(score);
+  const color = !isNull ? getScoreVar(score as number) : 'var(--fg-4)';
+  const clampedScore = !isNull ? Math.max(0, Math.min(100, score as number)) : 0;
 
   // Arc from -135° to +135° (270° sweep)
   const R = 32
@@ -94,7 +95,7 @@ export function ScoreCard({ label, score, icon, description, className }: ScoreC
           />
 
           {/* Progress arc */}
-          {clampedScore > 0 && (
+          {!isNull && clampedScore > 0 && (
             <path
               d={arcPath(startAngle, progressAngle)}
               fill="none"
@@ -106,7 +107,7 @@ export function ScoreCard({ label, score, icon, description, className }: ScoreC
           )}
 
           {/* Needle dot */}
-          {clampedScore > 0 && (
+          {!isNull && clampedScore > 0 && (
             <circle
               cx={CX + R * Math.cos(toRad(progressAngle))}
               cy={CY + R * Math.sin(toRad(progressAngle))}
@@ -127,7 +128,7 @@ export function ScoreCard({ label, score, icon, description, className }: ScoreC
             fill={color}
             style={{ fontFeatureSettings: '"tnum"' }}
           >
-            {score}
+            {isNull ? '--' : score}
           </text>
         </svg>
 
@@ -148,7 +149,7 @@ export function ScoreCard({ label, score, icon, description, className }: ScoreC
               className="font-mono font-300 leading-none"
               style={{ fontSize: '28px', color, fontFeatureSettings: '"tnum"' }}
             >
-              {score}
+              {isNull ? '--' : score}
             </span>
             <span className="data-label">/100</span>
           </div>
@@ -156,7 +157,7 @@ export function ScoreCard({ label, score, icon, description, className }: ScoreC
             className="font-mono text-[10px] mt-1"
             style={{ color }}
           >
-            {score >= 80 ? 'HIGH' : score >= 60 ? 'MEDIUM' : 'LOW'}
+            {isNull ? 'N/A' : (score! >= 80 ? 'HIGH' : score! >= 60 ? 'MEDIUM' : 'LOW')}
           </p>
         </div>
       </div>

@@ -250,6 +250,8 @@ export interface AnalysisReport {
 export interface Analysis {
   id: string
   repositoryId?: string
+  repositoryName?: string
+  analysisId?: string
   date: string
   status: AnalysisStatus
   areas?: AnalysisArea[]

@@ -51,6 +51,63 @@ export function setupMocks() {
   mock.onDelete('/account/users/github/unlink').reply(200, { ...MOCK_USER, hasGithubLinked: false, githubId: undefined })
 
   // ── Repositories ──────────────────────────────────────────
+  mock.onGet('/repositories/all-collections').reply(() => {
+    return [200, {
+      success: true,
+      collections: MOCK_REPOS.map(r => ({
+        url: r.url,
+        name: r.name,
+        description: r.description,
+        lastAnalysisDate: r.lastAnalysis?.date,
+        analyses: r.lastAnalysis ? [r.lastAnalysis.id] : []
+      }))
+    }]
+  })
+
+  mock.onGet('/repositories/all-analyses').reply(() => {
+    return [200, {
+      success: true,
+      analyses: MOCK_HISTORY.items.map(a => ({
+        analysisId: a.id,
+        repoURL: MOCK_REPOS.find(r => r.id === a.repositoryId)?.url || '',
+        status: (a.status ?? 'pending').toUpperCase().replace(/-/g, '_'),
+        timestamp: a.date,
+        totalIssues: (a as any).issuesCount || 0,
+        overallScore: (a as any).score || 0,
+        branch: a.branch,
+        commit: a.commitHash,
+        fullReport: a.report
+      }))
+    }]
+  })
+
+  mock.onPost('/repositories').reply((config) => {
+    const body = JSON.parse(config.data ?? '{}')
+    return [201, { success: true, url: body.url, name: body.name }]
+  })
+
+  mock.onDelete(/\/repositories\/.+/).reply(200, { success: true })
+
+  mock.onGet(/\/repositories\/full-details\/.+/).reply((config) => {
+    const url = decodeURIComponent(config.url?.split('/').pop() || '')
+    const repo = MOCK_REPOS.find(r => r.url === url || r.id === url) || MOCK_REPOS[0]
+    return [200, {
+      success: true,
+      name: repo.name,
+      description: repo.description,
+      analyses: MOCK_HISTORY.items
+        .filter(a => a.repositoryId === repo.id)
+        .map(a => ({
+          analysisId: a.id,
+          createdAt: a.date,
+          status: (a.status ?? 'completed').toLowerCase(),
+          branch: a.branch,
+          commit: a.commitHash,
+          fullReport: a.report
+        }))
+    }]
+  })
+
   mock.onGet('/analysis/repositories').reply((config) => {
     const search = (config.params?.search ?? '').toLowerCase()
     const filtered = search
@@ -88,7 +145,23 @@ export function setupMocks() {
     })
   })
 
-  // Endpoint reale del backend: POST /analysis/start
+  // Endpoint reale del backend: POST /analysis
+  mock.onPost('/analysis').reply((config) => {
+    const body = JSON.parse(config.data ?? '{}') as { repoUrl?: string; branch?: string }
+    const repoUrl = body.repoUrl || ''
+    const repo = MOCK_REPOS.find(r => r.url === repoUrl)
+    return [200, {
+      id: `ana_mock_${Date.now()}`,
+      user: MOCK_USER.id,
+      url: repoUrl,
+      branch: body.branch ?? 'main',
+      commit: 'mock-commit-sha',
+      errorMessage: 'Analysis Started Successfully',
+      path: `/tmp/cg-clone/${repo?.id ?? 'unknown'}`,
+    }]
+  })
+
+  // Vecchio endpoint reale del backend: POST /analysis/start
   mock.onPost('/analysis/start').reply((config) => {
     const body = JSON.parse(config.data ?? '{}') as { repoUrl?: string; branch?: string }
     const repo = MOCK_REPOS.find(r => r.url === body.repoUrl)

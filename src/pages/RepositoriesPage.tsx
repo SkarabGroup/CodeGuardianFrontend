@@ -10,7 +10,7 @@ import { AnalysisStatusBadge } from '@/components/analysis/AnalysisStatusBadge'
 import { AddRepositoryModal } from '@/components/repository/AddRepositoryModal'
 import { AnalysisOptionsModal } from '@/components/analysis/AnalysisOptionsModal'
 import { useAnalysisPolling } from '@/hooks/useAnalysisPolling'
-import { formatDate, getScoreVar, truncate } from '@/lib/utils'
+import { formatDate, formatDuration, getScoreVar, truncate } from '@/lib/utils'
 import type { Repository } from '@/types'
 
 export function RepositoriesPage() {
@@ -38,7 +38,12 @@ export function RepositoriesPage() {
   useEffect(() => {
     setIsLoading(true)
     const t = setTimeout(loadRepos, 300)
-    return () => clearTimeout(t)
+    // Polling per ricaricare automaticamente le repos (e lo status queued -> in-progress -> completed)
+    const interval = setInterval(loadRepos, 10000)
+    return () => {
+      clearTimeout(t)
+      clearInterval(interval)
+    }
   }, [loadRepos])
 
   useAnalysisPolling({
@@ -112,11 +117,13 @@ export function RepositoriesPage() {
         {/* Column headers */}
         {!isLoading && repos.length > 0 && (
           <div className="grid items-center border-b border-[var(--border)] px-6 py-2"
-               style={{ gridTemplateColumns: '1fr 140px 80px 80px 100px' }}>
+               style={{ gridTemplateColumns: '1fr 120px 80px 80px 80px 100px 100px' }}>
             <span className="data-label">NOME</span>
             <span className="data-label">ULTIMA ANALISI</span>
+            <span className="data-label text-right">DURATA</span>
             <span className="data-label text-right">QUALITÀ</span>
-            <span className="data-label text-right">SICUREZ.</span>
+            <span className="data-label text-right">SICUREZZ.</span>
+            <span className="data-label text-right">DOCUMENTAZ.</span>
             <span className="data-label text-right">AZIONI</span>
           </div>
         )}
@@ -154,9 +161,12 @@ export function RepositoriesPage() {
           </div>
         ) : (
           repos.map((repo, i) => {
-            const qs = repo.lastAnalysis?.report?.qualityScore
-            const ss = repo.lastAnalysis?.report?.securityScore
-            const isRunning = repo.lastAnalysis?.status === 'in-progress' || repo.lastAnalysis?.status === 'pending'
+            const result = repo.lastAnalysis
+            const qs = result?.report?.qualityScore
+            const ss = result?.report?.securityScore
+            const ds = result?.report?.documentationScore
+            const duration = result?.executionMetrics?.total_time_seconds
+            const isRunning = result?.status === 'in-progress' || result?.status === 'pending'
 
             return (
               <div
@@ -164,7 +174,7 @@ export function RepositoriesPage() {
                 className="grid items-center border-b border-[var(--border)] px-6 py-3.5 cursor-pointer
                            hover:bg-[var(--surface)] transition-colors duration-100 group animate-fade-in"
                 style={{
-                  gridTemplateColumns: '1fr 140px 80px 80px 100px',
+                  gridTemplateColumns: '1fr 120px 80px 80px 80px 100px 100px',
                   animationDelay: `${i * 30}ms`,
                 }}
                 onClick={() => navigate(`/repositories/${repo.id}`)}
@@ -174,7 +184,7 @@ export function RepositoriesPage() {
                   <div className="flex items-center gap-3 mb-1">
                     <GitBranch className="h-3.5 w-3.5 text-[var(--fg-3)] shrink-0" strokeWidth={1.5} />
                     <span className="font-display font-600 text-sm text-[var(--fg)] truncate">{repo.name}</span>
-                    <AnalysisStatusBadge status={repo.lastAnalysis?.status ?? 'not-analyzed'} />
+                    <AnalysisStatusBadge status={result?.status ?? 'not-analyzed'} />
                   </div>
                   {repo.description && (
                     <p className="font-mono text-[11px] text-[var(--fg-3)] truncate pl-6">
@@ -185,8 +195,16 @@ export function RepositoriesPage() {
 
                 {/* Last analysis */}
                 <div>
-                  {repo.lastAnalysis
-                    ? <span className="font-mono text-[11px] text-[var(--fg-3)]">{formatDate(repo.lastAnalysis.date)}</span>
+                  {result
+                    ? <span className="font-mono text-[11px] text-[var(--fg-3)]">{formatDate(result.date)}</span>
+                    : <span className="data-label">—</span>
+                  }
+                </div>
+
+                {/* Duration */}
+                <div className="text-right">
+                  {duration != null
+                    ? <span className="font-mono text-[11px] text-[var(--fg-2)]">{formatDuration(duration)}</span>
                     : <span className="data-label">—</span>
                   }
                 </div>
@@ -203,6 +221,14 @@ export function RepositoriesPage() {
                 <div className="text-right">
                   {ss != null
                     ? <span className="font-mono text-sm font-300" style={{ color: getScoreVar(ss), fontFeatureSettings: '"tnum"' }}>{ss}</span>
+                    : <span className="data-label">—</span>
+                  }
+                </div>
+
+                {/* Docs score */}
+                <div className="text-right">
+                  {ds != null
+                    ? <span className="font-mono text-sm font-300" style={{ color: getScoreVar(ds), fontFeatureSettings: '"tnum"' }}>{ds}</span>
                     : <span className="data-label">—</span>
                   }
                 </div>

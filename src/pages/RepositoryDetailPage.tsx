@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ExternalLink, Zap, Code2, Lock, FileText,
   AlertTriangle, ShieldAlert, Info, CheckCircle2, XCircle,
@@ -27,6 +27,7 @@ import type { Repository, Issue, Remediation, Analysis, ExportFormat } from '@/t
 export function RepositoryDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [repo, setRepo] = useState<Repository | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [analyzeOpen, setAnalyzeOpen] = useState(false)
@@ -55,9 +56,13 @@ export function RepositoryDetailPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [id, navigate])
+  }, [id, navigate, location.search])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, 10000)
+    return () => clearInterval(interval)
+  }, [load])
 
   useAnalysisPolling({
     repositoryId: id,
@@ -118,6 +123,9 @@ export function RepositoryDetailPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-display font-700 text-xl tracking-tight text-[var(--fg)]">{repo.name}</h1>
             <AnalysisStatusBadge status={analysis?.status ?? 'not-analyzed'} />
+            {new URLSearchParams(window.location.search).get('analysisId') && (
+               <Badge variant="outline" className="text-orange-500 border-orange-500/30">Vecchia Analisi</Badge>
+            )}
           </div>
 
           {repo.description && (
@@ -216,7 +224,7 @@ export function RepositoryDetailPage() {
         <div className="border-b border-[var(--border)] grid grid-cols-3 divide-x divide-[var(--border)]">
           <ScoreCard label="QUALITÀ CODICE"    score={report.qualityScore}            icon={<Code2 className="h-4 w-4" strokeWidth={1.5} />} />
           <ScoreCard label="SICUREZZA"         score={report.securityScore}           icon={<Lock className="h-4 w-4" strokeWidth={1.5} />} />
-          <ScoreCard label="DOCUMENTAZIONE"    score={report.documentationScore ?? 0} icon={<FileText className="h-4 w-4" strokeWidth={1.5} />} />
+          <ScoreCard label="DOCUMENTAZIONE"    score={report.documentationScore} icon={<FileText className="h-4 w-4" strokeWidth={1.5} />} />
         </div>
       )}
 
@@ -247,7 +255,6 @@ export function RepositoryDetailPage() {
               <TabsTrigger value="code"><Code2 className="h-3.5 w-3.5" />Codice</TabsTrigger>
               <TabsTrigger value="security"><Lock className="h-3.5 w-3.5" />Sicurezza</TabsTrigger>
               <TabsTrigger value="docs"><FileText className="h-3.5 w-3.5" />Documentazione</TabsTrigger>
-              <TabsTrigger value="remediation">Remediation</TabsTrigger>
               <TabsTrigger value="history">Storico</TabsTrigger>
             </TabsList>
 
@@ -350,7 +357,14 @@ export function RepositoryDetailPage() {
                 <IssuesList issues={report.codeAnalysis?.issues ?? report.qualityIssues ?? []} emptyMsg="Nessun problema di codice rilevato" />
               </TabsContent>
               <TabsContent value="security" className="px-6 mt-0">
-                <IssuesList issues={report.securityAnalysis?.issues ?? report.securityIssues ?? []} emptyMsg="Nessun problema di sicurezza rilevato" />
+                {report.securityAnalysis || report.securityIssues ? (
+                  <IssuesList issues={report.securityAnalysis?.issues ?? report.securityIssues ?? []} emptyMsg="Nessun problema di sicurezza rilevato" />
+                ) : (
+                  <div className="flex items-center gap-3 py-12 text-[var(--fg-3)]">
+                    <Info className="h-4 w-4" />
+                    <span className="text-sm font-light">L'analisi di sicurezza non e' stata completata.</span>
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="docs" className="px-6 mt-0">
                 {(report.documentationAnalysis?.completenessScore != null || report.documentationAnalysis?.coherenceScore != null) && (
@@ -373,10 +387,14 @@ export function RepositoryDetailPage() {
                     )}
                   </div>
                 )}
-                <IssuesList issues={report.documentationAnalysis?.issues ?? []} emptyMsg="Documentazione completa" />
-              </TabsContent>
-              <TabsContent value="remediation" className="px-6 mt-0">
-                <RemediationList remediations={report.remediations} analysisId={analysis!.id} onDecisionUpdate={load} />
+                {report.documentationAnalysis ? (
+                  <IssuesList issues={report.documentationAnalysis.issues} emptyMsg="Documentazione completa" />
+                ) : (
+                  <div className="flex items-center gap-3 py-12 text-[var(--fg-3)]">
+                    <Info className="h-4 w-4" />
+                    <span className="text-sm font-light">L'analisi della documentazione non e' stata richiesta o ha restituito un errore.</span>
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="history" className="px-6 mt-0">
                 <AnalysisHistory repositoryId={id!} />
@@ -493,7 +511,7 @@ function IssuesList({ issues, emptyMsg }: { issues: Issue[]; emptyMsg: string })
 }
 
 // ─── Remediation list ────────────────────────────────────────
-function RemediationList({ remediations, analysisId, onDecisionUpdate }: {
+export function RemediationList({ remediations, analysisId, onDecisionUpdate }: {
   remediations: Remediation[]
   analysisId: string
   onDecisionUpdate: () => void
@@ -618,6 +636,7 @@ function RemediationList({ remediations, analysisId, onDecisionUpdate }: {
 
 // ─── Analysis history ────────────────────────────────────────
 function AnalysisHistory({ repositoryId }: { repositoryId: string }) {
+  const navigate = useNavigate()
   const [history, setHistory] = useState<Analysis[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -728,7 +747,8 @@ function AnalysisHistory({ repositoryId }: { repositoryId: string }) {
         {history.map(a => (
           <div
             key={a.id}
-            className="border border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex items-center justify-between"
+            className="border border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-[var(--accent-dim)] transition-colors"
+            onClick={() => navigate(`/repositories/${encodeURIComponent(a.repositoryId || repositoryId)}?analysisId=${a.id}`)}
             style={{ borderRadius: 'var(--radius-sm)' }}
           >
             <div>
