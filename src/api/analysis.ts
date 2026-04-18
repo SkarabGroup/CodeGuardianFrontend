@@ -33,7 +33,7 @@ export const analysisApi = {
   },
 
   getHistory: async (_params?: { page?: number; limit?: number; repositoryId?: string }): Promise<PaginatedResponse<Analysis>> => {
-    const { data } = await gateway.get('/repositories/all')
+    const { data } = await gateway.get('/repositories/all-analyses')
     const raw = data as {
       success: boolean
       analyses?: Array<any>

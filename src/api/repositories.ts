@@ -1,42 +1,26 @@
 import { gateway } from './gateway'
-import type { Repository, PaginatedResponse, RankedRepository, AnalysisArea, Analysis } from '@/types'
+import type { Repository, PaginatedResponse, RankedRepository, AnalysisArea, Analysis, AnalysisStatus } from '@/types'
 
 export const repositoriesApi = {
   list: async (_params?: { search?: string; page?: number; limit?: number }): Promise<Repository[]> => {
-    // Recuperiamo la history delle analisi e deriviamo la lista di repository
-    const { data } = await gateway.get('/repositories')
-    const raw = data as { success: boolean; analyses?: Array<any> }
-    const analyses = raw.analyses || []
-    
-    // Poi mappiamo le analisi con le collections fetchando magari tutto?
-    // In assenza di un "list collections", manteniamo la deduplicazione:
-    const repoMap = new Map<string, any>()
-    for (const a of analyses) {
-      if (!a.repoURL) continue
-      if (!repoMap.has(a.repoURL)) {
-        repoMap.set(a.repoURL, a)
-      } else {
-        const existing = repoMap.get(a.repoURL)
-        if (new Date(a.createdAt || 0).getTime() > new Date(existing.createdAt || 0).getTime()) {
-          repoMap.set(a.repoURL, a)
-        }
-      }
-    }
-    
-    return Array.from(repoMap.entries()).map(([url, lastA]) => {
-      const statusConverted = (lastA.status || 'pending').toLowerCase().replace(/_/g, '-')
+    const collectionsRes = await gateway.get('/repositories/all-collections')
+    const rawCollections = collectionsRes.data as { success: boolean; collections?: Array<{ url: string; name: string; description?: string; lastAnalysisDate?: string; analyses?: string[] }> }
+    const collections = rawCollections.collections || []
+
+    return collections.map((c) => {
+      const hasAnalysis = c.analyses && c.analyses.length > 0
+      const lastAnalysisId = hasAnalysis ? c.analyses![0] : `NO-ANALYSIS-${c.url}`
+
       return {
-        id: encodeURIComponent(url),
-        name: url.split('/').pop() || url,
-        url,
-        lastAnalysis: {
-          id: lastA.analysisId,
-          date: lastA.createdAt || new Date().toISOString(),
-          status: statusConverted,
-          branch: lastA.branch,
-          commitHash: lastA.commit,
-          report: lastA.fullReport ?? undefined
-        }
+        id: encodeURIComponent(c.url),
+        name: c.name || (c.url.split('/').pop() || c.url),
+        description: c.description,
+        url: c.url,
+        lastAnalysis: hasAnalysis ? {
+           id: lastAnalysisId,
+           date: c.lastAnalysisDate || new Date().toISOString(),
+           status: 'completed',
+        } : undefined
       }
     })
   },
@@ -70,7 +54,10 @@ export const repositoriesApi = {
   },
 
   create: async (payload: { name: string; url: string; description?: string }): Promise<Repository> => {
-    await gateway.post('/repositories', { name: payload.name, url: payload.url, description: payload.description })
+    const { data } = await gateway.post('/repositories', { name: payload.name, url: payload.url, description: payload.description })
+    if (data && data.success === false) {
+      throw new Error(data.message || 'Errore durante la creazione del repository')
+    }
     return { id: encodeURIComponent(payload.url), name: payload.name, url: payload.url, description: payload.description }
   },
 
@@ -106,8 +93,8 @@ export const repositoriesApi = {
 
   getHistory: async (id: string, params?: { page?: number; limit?: number }): Promise<PaginatedResponse<Analysis>> => {
     const url = decodeURIComponent(id)
-    const { data } = await gateway.get('/repositories')
-    const raw = data as { success: boolean; analyses?: Array<any> }
+    const { data } = await gateway.get('/repositories/all-analyses')
+    const raw = data as { analyses?: Array<any> }
     const items = (raw.analyses || []).filter(a => a.repoURL === url).map(a => ({
       id: a.analysisId,
       status: a.status,

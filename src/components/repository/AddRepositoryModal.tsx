@@ -44,8 +44,13 @@ export function AddRepositoryModal({ open, onOpenChange, onCreated }: Props) {
       onCreated(repo)
       reset()
       onOpenChange(false)
-    } catch {
-      toast.error('Errore', { description: 'Impossibile aggiungere la repository.' })
+    } catch (error: any) {
+      const msg = error?.message || ''
+      if (msg.includes('already exists')) {
+        toast.error('Repository già presente', { description: 'Questa repository è già stata aggiunta alla tua collezione.' })
+      } else {
+        toast.error('Errore', { description: msg || 'Impossibile aggiungere la repository.' })
+      }
     }
   }
 

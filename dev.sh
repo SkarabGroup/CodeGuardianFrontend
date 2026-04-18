@@ -117,7 +117,7 @@ sleep 1
 echo ""
 
 # ── Avvio microservizi ────────────────────────────────────────────────────────
-JWT_SECRET="codeguardian-dev-secret"
+JWT_SECRET="super_secret_jwt_key_12345"
 
 if [[ "$MOCK_MODE" == "false" ]]; then
   # Modalità reale: passa DATABASE_URL, JWT_SECRET e forza PORT=3001
@@ -129,7 +129,7 @@ else
   (cd "$ACCOUNT_DIR" && PORT=3001 npm run start:dev 2>&1 | prefix "$RED" "account ") &
 fi
 
-(cd "$ANALYSIS_DIR" && PORT=3002 JWT_SECRET="$JWT_SECRET" npm run start:dev 2>&1 | prefix "$GREEN" "analysis") &
+(cd "$ANALYSIS_DIR" && npm run start:dev 2>&1 | prefix "$GREEN" "analysis") &
 
 # Attende un attimo che i microservizi siano pronti
 sleep 3

@@ -24,10 +24,20 @@ export default defineConfig({
       '/repositories': {
         target: 'http://localhost:3002',
         changeOrigin: true,
+        bypass(req) {
+          if (req.headers.accept?.includes('text/html')) {
+            return '/index.html'
+          }
+        }
       },
       '/pat': {
         target: 'http://localhost:3002',
         changeOrigin: true,
+        bypass(req) {
+          if (req.headers.accept?.includes('text/html')) {
+            return '/index.html'
+          }
+        }
       },
     },
   },

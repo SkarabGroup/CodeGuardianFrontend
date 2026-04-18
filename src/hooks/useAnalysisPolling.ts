@@ -25,7 +25,7 @@ export function useAnalysisPolling(options: Options = {}) {
     // Polling periodico globale per aggiornare lo stato e invalidare le chache (SWR/react-query)
     const interval = setInterval(async () => {
       try {
-        const { data } = await gateway.get('/repositories/all')
+        const { data } = await gateway.get('/repositories/all-analyses')
         if (data && data.success && Array.isArray(data.analyses)) {
           // Logica avanzata di notifica completamento o progresso non implementata
         }
