@@ -21,6 +21,14 @@ export default defineConfig({
         target: 'http://localhost:3002',
         changeOrigin: true,
       },
+      '/repositories': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+      },
+      '/pat': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+      },
     },
   },
 })

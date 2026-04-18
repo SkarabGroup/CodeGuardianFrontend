@@ -4,7 +4,7 @@ import type { Repository, PaginatedResponse, RankedRepository, AnalysisArea, Ana
 export const repositoriesApi = {
   list: async (_params?: { search?: string; page?: number; limit?: number }): Promise<Repository[]> => {
     // Recuperiamo la history delle analisi e deriviamo la lista di repository
-    const { data } = await gateway.get('/repositories/all')
+    const { data } = await gateway.get('/repositories')
     const raw = data as { success: boolean; analyses?: Array<any> }
     const analyses = raw.analyses || []
     
@@ -106,7 +106,7 @@ export const repositoriesApi = {
 
   getHistory: async (id: string, params?: { page?: number; limit?: number }): Promise<PaginatedResponse<Analysis>> => {
     const url = decodeURIComponent(id)
-    const { data } = await gateway.get('/repositories/all')
+    const { data } = await gateway.get('/repositories')
     const raw = data as { success: boolean; analyses?: Array<any> }
     const items = (raw.analyses || []).filter(a => a.repoURL === url).map(a => ({
       id: a.analysisId,
