@@ -3,7 +3,7 @@ import type { Analysis, AnalysisStatus, DocsAnalysisReport, PaginatedResponse, E
 
 export const analysisApi = {
   getById: async (id: string): Promise<Analysis> => {
-    const { data } = await gateway.get('/analysis/one', { data: { analysisId: id } })
+    const { data } = await gateway.get(`/repositories/analysis/${id}`)
     const raw = data as {
       success: boolean
       analysisId?: string
@@ -33,7 +33,7 @@ export const analysisApi = {
   },
 
   getHistory: async (_params?: { page?: number; limit?: number; repositoryId?: string }): Promise<PaginatedResponse<Analysis>> => {
-    const { data } = await gateway.get('/analysis/all')
+    const { data } = await gateway.get('/repositories/all')
     const raw = data as {
       success: boolean
       analyses?: Array<any>

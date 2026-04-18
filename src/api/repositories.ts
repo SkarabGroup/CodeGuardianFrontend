@@ -3,11 +3,13 @@ import type { Repository, PaginatedResponse, RankedRepository, AnalysisArea, Ana
 
 export const repositoriesApi = {
   list: async (_params?: { search?: string; page?: number; limit?: number }): Promise<Repository[]> => {
-    // Il nuovo backend non ha più un gestore repository esplicito, recuperiamo la lista unica dalle analisi
-    const { data } = await gateway.get('/analysis/all')
+    // Recuperiamo la history delle analisi e deriviamo la lista di repository
+    const { data } = await gateway.get('/repositories/all')
     const raw = data as { success: boolean; analyses?: Array<any> }
     const analyses = raw.analyses || []
     
+    // Poi mappiamo le analisi con le collections fetchando magari tutto?
+    // In assenza di un "list collections", manteniamo la deduplicazione:
     const repoMap = new Map<string, any>()
     for (const a of analyses) {
       if (!a.repoURL) continue
@@ -15,7 +17,6 @@ export const repositoriesApi = {
         repoMap.set(a.repoURL, a)
       } else {
         const existing = repoMap.get(a.repoURL)
-        // Manteniamo la last analysis
         if (new Date(a.createdAt || 0).getTime() > new Date(existing.createdAt || 0).getTime()) {
           repoMap.set(a.repoURL, a)
         }
@@ -41,28 +42,27 @@ export const repositoriesApi = {
   },
 
   get: async (id: string): Promise<Repository> => {
-    // Id è il repoURL encodato o stringa dummy
     const url = decodeURIComponent(id)
     const repo: Repository = { id, name: url.split('/').pop() || url, url }
     
-    // Agganciamo la lastAnalysis (con fullReport) per la vista
     try {
-      const { data: allData } = await gateway.get('/analysis/all')
-      const analyses = (allData as any).analyses || []
-      const mine = analyses.filter((a: any) => a.repoURL === url).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      
-      if (mine.length > 0) {
-        const lastId = mine[0].analysisId
-        const { data: full } = await gateway.get('/analysis/one', { data: { analysisId: lastId } })
-        const rawFull = full as any
-        
-        repo.lastAnalysis = {
-           id: lastId,
-           date: mine[0].createdAt || new Date().toISOString(),
-           status: mine[0].status || 'pending',
-           branch: mine[0].branch,
-           commitHash: mine[0].commit,
-           report: rawFull.fullReport ?? undefined
+      // Usiamo il nuovo endpoint per i full details!
+      const { data } = await gateway.get(`/repositories/full-details/${encodeURIComponent(url)}`)
+      if (data.success) {
+        repo.name = data.name
+        repo.description = data.description
+        const analyses = data.analyses || []
+        const mine = analyses.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        if (mine.length > 0) {
+          const rawFull = mine[0]
+          repo.lastAnalysis = {
+             id: rawFull.analysisId,
+             date: rawFull.createdAt || new Date().toISOString(),
+             status: rawFull.status || 'pending',
+             branch: rawFull.branch,
+             commitHash: rawFull.commit,
+             report: rawFull.fullReport ?? undefined
+          }
         }
       }
     } catch(e) {}
@@ -70,6 +70,7 @@ export const repositoriesApi = {
   },
 
   create: async (payload: { name: string; url: string; description?: string }): Promise<Repository> => {
+    await gateway.post('/repositories', { name: payload.name, url: payload.url, description: payload.description })
     return { id: encodeURIComponent(payload.url), name: payload.name, url: payload.url, description: payload.description }
   },
 
@@ -78,8 +79,9 @@ export const repositoriesApi = {
     return { id, name: payload.name ?? (url.split('/').pop() || url), url, description: payload.description }
   },
 
-  delete: async (_id: string): Promise<void> => {
-    return Promise.resolve()
+  delete: async (id: string): Promise<void> => {
+    const url = decodeURIComponent(id)
+    await gateway.delete(`/repositories/${encodeURIComponent(url)}`)
   },
 
   getRanking: async (): Promise<RankedRepository[]> => {
@@ -91,8 +93,8 @@ export const repositoriesApi = {
     payload?: { areas?: AnalysisArea[]; branch?: string; commitHash?: string; repositoryUrl?: string },
   ): Promise<{ analysisId: string }> => {
     const areas = payload?.areas ?? ['code', 'security', 'documentation']
-    const { data } = await gateway.post('/analysis/start', {
-      repoUrl: payload?.repositoryUrl,
+    const { data } = await gateway.post('/analysis', {
+      repoUrl: payload?.repositoryUrl ?? decodeURIComponent(_id),
       branch: payload?.branch ?? 'main',
       commit: payload?.commitHash ?? undefined,
       requestedCode: areas.includes('code'),
@@ -103,9 +105,8 @@ export const repositoriesApi = {
   },
 
   getHistory: async (id: string, params?: { page?: number; limit?: number }): Promise<PaginatedResponse<Analysis>> => {
-    // Simuliamo la history filtrando fetchando tutti
     const url = decodeURIComponent(id)
-    const { data } = await gateway.get('/analysis/all')
+    const { data } = await gateway.get('/repositories/all')
     const raw = data as { success: boolean; analyses?: Array<any> }
     const items = (raw.analyses || []).filter(a => a.repoURL === url).map(a => ({
       id: a.analysisId,
@@ -113,7 +114,7 @@ export const repositoriesApi = {
       issuesCount: a.totalIssues || 0,
       score: a.overallScore || 0,
       startedAt: a.timestamp || new Date().toISOString(),
-      date: a.timestamp || new Date().toISOString(), // Fallback per Type match
+      date: a.timestamp || new Date().toISOString(),
       areas: [a.requestedCode && 'code', a.requestedSecurity && 'security', a.requestedDocumentation && 'documentation'].filter(Boolean),
       branch: a.branch,
       commitHash: a.commit,
