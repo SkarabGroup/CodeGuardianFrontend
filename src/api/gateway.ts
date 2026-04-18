@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios'
 
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://localhost:8080'
+const ACCOUNT_URL = import.meta.env.VITE_ACCOUNT_URL || ''
+const ANALYSIS_URL = import.meta.env.VITE_ANALYSIS_URL || ''
 
 const ACCESS_TOKEN_KEY = 'cg_access_token'
 const REFRESH_TOKEN_KEY = 'cg_refresh_token'
@@ -29,12 +30,17 @@ function processQueue(error: unknown, token: string | null = null) {
 }
 
 export const gateway: AxiosInstance = axios.create({
-  baseURL: GATEWAY_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request: attach Bearer token
+// Request: imposta dinamicamente l'URL o e il Bearer
 gateway.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (config.url?.startsWith('/account')) {
+    config.baseURL = ACCOUNT_URL
+  } else {
+    config.baseURL = ANALYSIS_URL
+  }
+
   const token = tokenStorage.getAccess()
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`
@@ -111,7 +117,7 @@ gateway.interceptors.response.use(
       }
 
       try {
-        const { data } = await axios.post(`${GATEWAY_URL}/account/auth/refresh`, { refreshToken })
+        const { data } = await axios.post(`${ACCOUNT_URL}/account/auth/refresh`, { refreshToken })
         const newToken: string = data.accessToken
         tokenStorage.setAccess(newToken)
         if (data.refreshToken) tokenStorage.setRefresh(data.refreshToken)
