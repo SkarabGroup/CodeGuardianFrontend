@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Loader2, Zap, Code2, Lock, FileText, GitBranch } from 'lucide-react'
 import { toast } from 'sonner'
 import { repositoriesApi } from '@/api/repositories'
@@ -40,6 +41,7 @@ interface Props {
 const BRANCH_RE = /^(?!.*\.\.)(?!.*\/\/)(?!\/)(?!.*\/$)[^\s~^:?*\[\\]+$/
 
 export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, repositoryName, repositoryUrl, onStarted }: Props) {
+  const navigate = useNavigate()
   const [selected, setSelected] = useState<Set<AnalysisArea>>(new Set(['code', 'security', 'documentation']))
   const [branch, setBranch] = useState('main')
   const [commitHash, setCommitHash] = useState('')
@@ -87,9 +89,10 @@ export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, reposit
         commitHash: commitHash.trim() || undefined,
         repositoryUrl,
       })
-      toast.success('Analisi avviata', { description: `Analisi di ${repositoryName} in corso...` })
+      toast.success('Analisi avviata', { description: `Analisi di ${repositoryName || 'repository'} in corso...` })
       onStarted()
       onOpenChange(false)
+      navigate('/repositories')
     } catch {
       toast.error('Errore', { description: "Impossibile avviare l'analisi." })
     } finally {

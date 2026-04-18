@@ -33,7 +33,7 @@ export const repositoriesApi = {
       // Usiamo il nuovo endpoint per i full details!
       const { data } = await gateway.get(`/repositories/full-details/${encodeURIComponent(url)}`)
       if (data.success) {
-        repo.name = data.name
+        repo.name = data.name || repo.name
         repo.description = data.description
         const analyses = data.analyses || []
         const mine = analyses.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
