@@ -1,8 +1,9 @@
 export function calculateScores(a: any) {
   let reportObj = a.fullReport ?? undefined;
-  if (!reportObj && (a.codeReportJson || a.docsReportJson)) {
+  if (!reportObj && (a.codeReportJson || a.docsReportJson || a.secReportJson)) {
      const codeRep = a.codeReportJson?.analysis_report || a.codeReportJson;
      const docsRep = a.docsReportJson?.analysis_report || a.docsReportJson;
+     const secRep = a.secReportJson?.analysis_report || a.secReportJson;
      
      let mappedCodeIssues = (codeRep?.static_analysis?.issues || []);
      if (mappedCodeIssues.length === 0 && codeRep?.ai_interpretation?.static_analysis_evaluation?.key_issues_reasoning) {
@@ -16,6 +17,13 @@ export function calculateScores(a: any) {
         if (docsRep.missing_files) mappedDocsIssues.push(...docsRep.missing_files);
      }
 
+     const mappedSecIssues: any[] = [];
+     if (secRep) {
+        if (secRep.trivy) mappedSecIssues.push(...secRep.trivy);
+        if (secRep.semgrep) mappedSecIssues.push(...secRep.semgrep);
+        if (secRep.grype) mappedSecIssues.push(...secRep.grype);
+     }
+
      const qualityScore = codeRep ? (
         codeRep.ai_interpretation?.verdict === 'POOR' ? Math.max(0, 40 - mappedCodeIssues.length) :
         codeRep.ai_interpretation?.verdict === 'FAIR' ? Math.max(40, 70 - mappedCodeIssues.length) :
@@ -23,6 +31,7 @@ export function calculateScores(a: any) {
      ) : 0;
      
      const documentationScore = docsRep ? Math.max(0, 100 - mappedDocsIssues.length * 5) : 0;
+     const securityScore = secRep ? Math.max(0, 100 - mappedSecIssues.length * 3) : 0;
 
      // Calculate total issues accurately
      const criticalIssues = mappedCodeIssues.filter((i: any) => i.severity === 'critical' || i.severity?.toLowerCase() === 'error' || i.severity?.toLowerCase() === 'high').length + mappedDocsIssues.filter((i: any) => i.severity === 'critical' || i.severity === 'error').length;
@@ -31,11 +40,11 @@ export function calculateScores(a: any) {
 
      reportObj = {
        qualityScore,
-       securityScore: undefined, // placeholder
+       securityScore: secRep ? securityScore : undefined,
        documentationScore,
-       criticalIssues,
-       warningIssues,
-       infoIssues,
+       criticalIssues: criticalIssues + mappedSecIssues.filter((i: any) => i.severity?.toLowerCase() === 'critical' || i.severity?.toLowerCase() === 'high' || i.severity?.toLowerCase() === 'error').length,
+       warningIssues: warningIssues + mappedSecIssues.filter((i: any) => i.severity?.toLowerCase() === 'medium' || i.severity?.toLowerCase() === 'warning').length,
+       infoIssues: infoIssues + mappedSecIssues.filter((i: any) => i.severity?.toLowerCase() === 'low' || i.severity?.toLowerCase() === 'info').length,
        remediations: []
      };
   } else if (!reportObj && a.status === 'COMPLETED') {

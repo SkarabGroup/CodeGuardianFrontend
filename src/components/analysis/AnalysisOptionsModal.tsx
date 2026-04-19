@@ -45,6 +45,7 @@ export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, reposit
   const [selected, setSelected] = useState<Set<AnalysisArea>>(new Set(['code', 'security', 'documentation']))
   const [branch, setBranch] = useState('main')
   const [commitHash, setCommitHash] = useState('')
+  const [password, setPassword] = useState('')
   const [branchError, setBranchError] = useState('')
   const [commitError, setCommitError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -88,6 +89,7 @@ export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, reposit
         branch: branch.trim(),
         commitHash: commitHash.trim() || undefined,
         repositoryUrl,
+        password: password.trim() || undefined,
       })
       toast.success('Analisi avviata', { description: `Analisi di ${repositoryName || 'repository'} in corso...` })
       onStarted()
@@ -147,6 +149,20 @@ export function AnalysisOptionsModal({ open, onOpenChange, repositoryId, reposit
 
         {/* Branch & commit */}
         <div className="space-y-3 border-t border-[hsl(var(--border))] pt-4">
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-xs font-mono text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
+              <Lock className="h-3.5 w-3.5" />
+              Password / PAT
+              <span className="normal-case tracking-normal font-sans text-[10px]">(per repo privati)</span>
+            </label>
+            <Input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Inserisci password o token PAT"
+              className="font-mono text-sm"
+            />
+          </div>
           <div className="space-y-1">
             <label className="flex items-center gap-1.5 text-xs font-mono text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
               <GitBranch className="h-3.5 w-3.5" />

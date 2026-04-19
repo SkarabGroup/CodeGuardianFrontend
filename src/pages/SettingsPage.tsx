@@ -88,33 +88,41 @@ function ProfileSection() {
 
   const onSubmit = async (data: PatForm) => {
     try {
-      if (data.password) {
-        await patApi.update({
-          repositoryUrl: data.repositoryUrl,
-          password: data.password,
-          newPersonalAccessToken: data.personalAccessToken
-        })
-      } else {
-        await patApi.add({
-          repositoryUrl: data.repositoryUrl,
-          personalAccessToken: data.personalAccessToken
-        })
+      const payload = {
+        repositoryUrl: data.repositoryUrl,
+        password: data.password || '',
+        personalAccessToken: data.personalAccessToken
       }
+
+      try {
+        await patApi.add(payload)
+      } catch (err: any) {
+        if (err.message && err.message.toLowerCase().includes('already exist')) {
+          await patApi.update({
+            repositoryUrl: data.repositoryUrl,
+            password: data.password || '',
+            newPersonalAccessToken: data.personalAccessToken
+          })
+        } else {
+          throw err
+        }
+      }
+
       toast.success('PAT salvato / aggiornato correttamente')
       reset()
-    } catch {
-      toast.error('Errore durante il salvataggio del PAT')
+    } catch (err: any) {
+      toast.error(err.message || 'Errore durante il salvataggio del PAT')
     }
   }
 
   const doDelete = async (data: PatForm) => {
     setIsDeleting(true)
     try {
-      await patApi.delete({ repositoryUrl: data.repositoryUrl, password: data.password })
+      await patApi.delete({ repositoryUrl: data.repositoryUrl, password: data.password || '' })
       toast.success('PAT eliminato correttamente')
       reset()
-    } catch {
-      toast.error("Errore durante l'eliminazione del PAT")
+    } catch (err: any) {
+      toast.error(err.message || "Errore durante l'eliminazione del PAT")
     } finally {
       setIsDeleting(false)
     }
@@ -140,7 +148,7 @@ function ProfileSection() {
               {errors.personalAccessToken && <p className="text-xs text-red-400">{errors.personalAccessToken.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Password di crittazione (Opzionale)</label>
+              <label className="text-sm font-medium">Password di crittazione</label>
               <Input type="password" placeholder="Password PAT" {...register('password')} />
               <p className="text-xs text-[hsl(var(--muted-foreground))]">Inserisci se vuoi crittografare o devi sovrascrivere/eliminare un PAT già protetto.</p>
             </div>

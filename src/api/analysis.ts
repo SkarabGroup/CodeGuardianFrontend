@@ -1,3 +1,5 @@
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { calculateScores } from './calculateScores'
 import { gateway } from './gateway'
 import type { Analysis, AnalysisStatus, DocsAnalysisReport, PaginatedResponse, ExportFormat, Remediation } from '@/types'
@@ -84,11 +86,45 @@ export const analysisApi = {
   },
 
   exportReport: async (id: string, format: ExportFormat): Promise<Blob> => {
-    const { data } = await gateway.get(`/analysis/reports/${id}/export`, {
-      params: { format },
-      responseType: 'blob',
-    })
-    return data
+    // Generate export on frontend side instead of relying on the backend endpoint
+    const analysis = await analysisApi.getById(id);
+    
+    if (format === 'json') {
+      const jsonStr = JSON.stringify(analysis, null, 2);
+      return new Blob([jsonStr], { type: 'application/json' });
+    }
+    
+    if (format === 'pdf') {
+      const doc = new jsPDF() as any;
+      
+      // We will just render the raw JSON into the PDF elegantly to ensure all numbers and structures are exact.
+      doc.setFontSize(18);
+      doc.setTextColor(0, 0, 0);
+      doc.text('CodeGuardian Automatic Raw Export', 14, 20);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(50, 50, 50);
+      
+      // Use splitTextToSize to wrap the JSON nicely inside the page boundaries
+      const jsonStr = JSON.stringify(analysis, null, 2);
+      const splitText = doc.splitTextToSize(jsonStr, 180);
+      
+      let y = 30;
+      const pageHeight = doc.internal.pageSize.height;
+      
+      for (let i = 0; i < splitText.length; i++) {
+        if (y > pageHeight - 15) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(splitText[i], 14, y);
+        y += 5; // line height
+      }
+      
+      return doc.output('blob');
+    }
+    
+    throw new Error('Unsupported export format: ' + format);
   },
 
   updateRemediationDecision: async (

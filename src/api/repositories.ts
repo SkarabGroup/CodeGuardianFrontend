@@ -85,10 +85,11 @@ export const repositoriesApi = {
           let reportObj = rawFull.fullReport ?? undefined
           
           // Costruisce report anche se il DB ha codeReportJson/docsReportJson ma non un `fullReport` pre-assemblato
-          if (!reportObj && (rawFull.codeReportJson || rawFull.docsReportJson)) {
+          if (!reportObj && (rawFull.codeReportJson || rawFull.docsReportJson || rawFull.secReportJson)) {
              
              const codeRep = rawFull.codeReportJson?.analysis_report || rawFull.codeReportJson;
              const docsRep = rawFull.docsReportJson?.analysis_report || rawFull.docsReportJson;
+             const secRep = rawFull.secReportJson?.analysis_report || rawFull.secReportJson;
              
              // Mapping issues del codice
              let mappedCodeIssues = (codeRep?.static_analysis?.issues || []).map((iss: any) => ({
@@ -149,18 +150,37 @@ export const repositoriesApi = {
                 }
              }
 
-             // TODO: Eventuali score mockati finchè il backend non unisce un `fullReport` completo
+             const mappedSecIssues: any[] = [];
+             if (secRep) {
+                const rawSec: any[] = [];
+                if (secRep.trivy) rawSec.push(...secRep.trivy);
+                if (secRep.semgrep) rawSec.push(...secRep.semgrep);
+                if (secRep.grype) rawSec.push(...secRep.grype);
+                
+                rawSec.forEach((iss: any) => mappedSecIssues.push({
+                    id: iss.vulnerability_id || iss.rule_id || Math.random().toString(36).substr(2, 9),
+                    title: iss.package_name ? `Vulnerabilità in ${iss.package_name} (${iss.package_version})` : (iss.rule_id || 'Security Issue'),
+                    description: iss.description,
+                    severity: (iss.severity?.toLowerCase() === 'error' || iss.severity?.toLowerCase() === 'high' || iss.severity?.toLowerCase() === 'critical' ? 'critical' : iss.severity?.toLowerCase() === 'warning' || iss.severity?.toLowerCase() === 'medium' ? 'warning' : 'info'),
+                    category: iss.owasp_category || 'SECURITY',
+                    file: iss.path || iss.file,
+                    location: iss.line ? { line_start: iss.line } : undefined,
+                    suggested_fix: iss.remediation
+                }));
+             }
+             const secScoreCalc = secRep ? Math.max(0, 100 - mappedSecIssues.length * 3) : undefined;
+               // TODO: Eventuali score mockati finchè il backend non unisce un `fullReport` completo
              reportObj = {
                qualityScore: codeRep ? (
     codeRep.ai_interpretation?.verdict === 'POOR' ? Math.max(0, 40 - mappedCodeIssues.length) :
     codeRep.ai_interpretation?.verdict === 'FAIR' ? Math.max(40, 70 - mappedCodeIssues.length) :
     Math.max(0, 100 - mappedCodeIssues.length * 2)
   ) : 0,
-               securityScore: undefined, // TODO: da mappare quando ci sarà il security report, per ora placeholder non rompe nulla
+               securityScore: secScoreCalc,
                documentationScore: docsRep ? Math.max(0, 100 - mappedDocsIssues.length * 5) : undefined,
-               criticalIssues: mappedCodeIssues.filter((i: any) => i.severity === 'critical').length + mappedDocsIssues.filter((i: any) => i.severity === 'critical').length,
-               warningIssues: mappedCodeIssues.filter((i: any) => i.severity === 'warning').length + mappedDocsIssues.filter((i: any) => i.severity === 'warning').length,
-               infoIssues: mappedCodeIssues.filter((i: any) => i.severity === 'info').length + mappedDocsIssues.filter((i: any) => i.severity === 'info').length,
+               criticalIssues: mappedCodeIssues.filter((i: any) => i.severity === 'critical').length + mappedDocsIssues.filter((i: any) => i.severity === 'critical').length + mappedSecIssues.filter((i: any) => i.severity === 'critical').length,
+               warningIssues: mappedCodeIssues.filter((i: any) => i.severity === 'warning').length + mappedDocsIssues.filter((i: any) => i.severity === 'warning').length + mappedSecIssues.filter((i: any) => i.severity === 'warning').length,
+               infoIssues: mappedCodeIssues.filter((i: any) => i.severity === 'info').length + mappedDocsIssues.filter((i: any) => i.severity === 'info').length + mappedSecIssues.filter((i: any) => i.severity === 'info').length,
                remediations: [],
                codeAnalysis: codeRep ? {
                   issues: mappedCodeIssues,
@@ -173,6 +193,10 @@ export const repositoriesApi = {
                documentationAnalysis: docsRep ? {
                   issues: mappedDocsIssues,
                   report: docsRep
+               } : undefined,
+               securityAnalysis: secRep ? {
+                  issues: mappedSecIssues,
+                  summary: 'Scansione completata con Trivy, Semgrep e Grype.'
                } : undefined
              }
 } else if (!reportObj && rawFull.status === 'COMPLETED') {
@@ -251,13 +275,14 @@ export const repositoriesApi = {
 
   startAnalysis: async (
     _id: string,
-    payload?: { areas?: AnalysisArea[]; branch?: string; commitHash?: string; repositoryUrl?: string },
+    payload?: { areas?: AnalysisArea[]; branch?: string; commitHash?: string; repositoryUrl?: string; password?: string },
   ): Promise<{ analysisId: string }> => {
     const areas = payload?.areas ?? ['code', 'security', 'documentation']
     const { data } = await gateway.post('/analysis', {
       repoUrl: payload?.repositoryUrl ?? decodeURIComponent(_id),
       branch: payload?.branch ?? 'main',
       commit: payload?.commitHash ?? undefined,
+      password: payload?.password ?? undefined,
       requestedCode: areas.includes('code'),
       requestedSecurity: areas.includes('security'),
       requestedDocumentation: areas.includes('documentation'),
