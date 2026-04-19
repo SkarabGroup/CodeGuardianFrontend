@@ -30,7 +30,9 @@ export function RankingPage() {
         </div>
       </div>
 
-      {/* Column headers */}
+      <div className="flex-1 overflow-auto">
+        <div className="min-w-[600px] flex flex-col h-full">
+          {/* Column headers */}
       {!isLoading && ranking.length > 0 && (
         <div
           className="grid border-b border-[var(--border)] px-6 py-2"
@@ -43,7 +45,7 @@ export function RankingPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         {isLoading ? (
           <div className="p-6 space-y-2">
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
@@ -134,6 +136,8 @@ export function RankingPage() {
             )
           })
         )}
+      </div>
+      </div>
       </div>
     </div>
   )
