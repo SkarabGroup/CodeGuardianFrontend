@@ -107,4 +107,40 @@ describe('ScoreCard', () => {
     const { container } = render(<ScoreCard label="T" score={80} icon={icon} className="my-card" />)
     expect((container.firstChild as HTMLElement).className).toContain('my-card')
   })
+
+  // ── Null / NaN Score ────────────────────────────────────────
+  it('handles null score correctly', () => {
+    render(<ScoreCard label="T" score={null} icon={icon} />)
+    const matches = screen.getAllByText('--')
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('N/A')).toBeInTheDocument()
+  })
+
+  it('handles undefined score correctly', () => {
+    render(<ScoreCard label="T" score={undefined} icon={icon} />)
+    const matches = screen.getAllByText('--')
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('N/A')).toBeInTheDocument()
+  })
+
+  it('handles NaN score correctly', () => {
+    render(<ScoreCard label="T" score={NaN} icon={icon} />)
+    const matches = screen.getAllByText('--')
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('N/A')).toBeInTheDocument()
+  })
+
+  it('handles out of bounds scores (negative)', () => {
+    const { container } = render(<ScoreCard label="T" score={-10} icon={icon} />)
+    expect(screen.getByText('LOW')).toBeInTheDocument() // -10 is clamped to 0
+    const paths = container.querySelectorAll('path')
+    expect(paths.length).toBe(1) // only background arc
+  })
+
+  it('handles out of bounds scores (over 100)', () => {
+    const { container } = render(<ScoreCard label="T" score={150} icon={icon} />)
+    expect(screen.getByText('HIGH')).toBeInTheDocument() // 150 is clamped to 100
+    const paths = container.querySelectorAll('path')
+    expect(paths.length).toBe(2) // background + full progress arc
+  })
 })
