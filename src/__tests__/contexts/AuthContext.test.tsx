@@ -35,6 +35,8 @@ function TestConsumer() {
   const ctx = useContext(AuthContext)!
   return (
     <div>
+        <span data-testid="username">{ctx.user?.username ?? 'none'}</span>
+
       <span data-testid="email">{ctx.user?.email ?? 'none'}</span>
       <span data-testid="loading">{String(ctx.isLoading)}</span>
       <span data-testid="auth">{String(ctx.isAuthenticated)}</span>
@@ -142,3 +144,22 @@ describe('AuthContext', () => {
     await waitFor(() => expect(screen.getByTestId('email')).toHaveTextContent('carol@test.com'))
   })
 })
+
+  it('falls back to empty strings when both email and username are absent in JWT', async () => {
+    const exp = Math.floor(Date.now() / 1000) + 3600
+    const token = makeJwt({ sub: 'u2', exp })
+    mockGetAccess.mockReturnValue(token)
+    renderProvider()
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+    expect(screen.getByTestId('email').textContent).toBe('')
+    expect(screen.getByTestId('username').textContent).toBe('')
+  })
+  it('falls back to empty strings when both email and username are absent in JWT', async () => {
+    const exp = Math.floor(Date.now() / 1000) + 3600
+    const token = makeJwt({ sub: 'u2', exp })
+    mockGetAccess.mockReturnValue(token)
+    renderProvider()
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+    expect(screen.getByTestId('email').textContent).toBe('')
+    expect(screen.getByTestId('username').textContent).toBe('')
+  })

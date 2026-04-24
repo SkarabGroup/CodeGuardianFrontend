@@ -212,4 +212,11 @@ describe('calculateScores', () => {
     const result = calculateScores({ status: 'pending', createdAt: ts, updatedAt: ts })
     expect(result.extMetrics?.total_time_seconds).toBe(60)
   })
+
+  it('returns undefined for extMetrics when Object.keys is empty (testing branch coverage)', () => {
+    const keysSpy = vi.spyOn(Object, 'keys').mockReturnValueOnce([])
+    const result = calculateScores({ status: 'pending' })
+    expect(result.extMetrics).toBeUndefined()
+    keysSpy.mockRestore()
+  })
 })

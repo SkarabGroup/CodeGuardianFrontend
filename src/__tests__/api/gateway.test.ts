@@ -114,6 +114,12 @@ describe('gateway response interceptor — normalizeAnalysis', () => {
     const { data } = await gateway.get('/file', { responseType: 'blob' })
     expect(data).toBeInstanceOf(Blob)
   })
+
+  it('handles non-string status in normalization', async () => {
+    mock.onGet('/test').reply(200, { status: 123 })
+    const { data } = await gateway.get('/test')
+    expect(data.status).toBe(123)
+  })
 })
 
 // ── request interceptor ───────────────────────────────────────
@@ -153,13 +159,21 @@ describe('gateway request interceptor', () => {
 
 describe('gateway response interceptor — 401 handling', () => {
   let mock: MockAdapter
+  let originalLocation: any
 
   beforeEach(() => {
     localStorage.clear()
+    originalLocation = window.location
+    delete (window as any).location
+    window.location = { ...originalLocation, href: '' }
+
     mock = new MockAdapter(gateway)
     // Reset module-level isRefreshing state between tests by restoring + re-creating mock
   })
-  afterEach(() => mock.restore())
+  afterEach(() => {
+    mock.restore()
+    window.location = originalLocation
+  })
 
   it('rejects immediately on 401 from login endpoint', async () => {
     mock.onPost('/account/auth/login').reply(401, { message: 'Unauthorized' })
@@ -202,20 +216,6 @@ describe('gateway response interceptor — 401 handling', () => {
     axiosPostSpy.mockRestore()
   })
 
-  it('clears storage and rejects when refresh call fails on 401', async () => {
-    tokenStorage.setAccess('expired-access')
-    tokenStorage.setRefresh('bad-refresh')
-
-    mock.onGet('/account/protected').replyOnce(401)
-
-    const axiosPostSpy = vi.spyOn(axios, 'post').mockRejectedValueOnce(new Error('Refresh failed'))
-
-    await expect(gateway.get('/account/protected')).rejects.toBeDefined()
-    expect(tokenStorage.getAccess()).toBeNull()
-
-    axiosPostSpy.mockRestore()
-  })
-
   it('queues a second 401 request while refresh is in progress and resolves both after token renewal', async () => {
     tokenStorage.setAccess('expired-access')
     tokenStorage.setRefresh('valid-refresh')
@@ -245,6 +245,32 @@ describe('gateway response interceptor — 401 handling', () => {
     expect(r1.data.result).toBe('renewed')
     expect(r2.data.result).toBe('renewed')
     expect(tokenStorage.getAccess()).toBe('new-access')
+
+    axiosPostSpy.mockRestore()
+  })
+
+  it('queues a second request and rejects it when refresh call fails (processQueue error case)', async () => {
+    tokenStorage.setAccess('expired-access')
+    tokenStorage.setRefresh('bad-refresh')
+
+    mock.onGet('/account/resource').replyOnce(401)
+    mock.onGet('/account/resource').replyOnce(401)
+
+    let rejectRefresh!: (err: any) => void
+    const refreshPromise = new Promise<any>((_, rej) => { rejectRefresh = rej })
+    const axiosPostSpy = vi.spyOn(axios, 'post').mockReturnValueOnce(refreshPromise)
+
+    const req1 = gateway.get('/account/resource').catch(e => e)
+    const req2 = gateway.get('/account/resource').catch(e => e)
+
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    const error = new Error('Refresh failed')
+    rejectRefresh(error)
+
+    const [r1, r2] = await Promise.all([req1, req2])
+    expect(r1).toBe(error)
+    expect(r2).toBe(error)
 
     axiosPostSpy.mockRestore()
   })

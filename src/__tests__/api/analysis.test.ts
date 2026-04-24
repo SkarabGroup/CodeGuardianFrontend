@@ -209,4 +209,87 @@ describe('analysisApi', () => {
     await analysisApi.updateRemediationDecision('a-1', 'rem-1', 'accepted')
     expect(mockPatch).toHaveBeenCalledWith('/analysis/reports/a-1/remediations/rem-1', { decision: 'accepted' })
   })
+
+  it('getById missing raw properties', async () => {
+    mockGet.mockResolvedValue({ 
+      data: {
+        data: {
+          // missing createdAt, status, analysisId
+          branch: "b1",
+          commit: "c1"
+        }
+      }
+    })
+    const res = await analysisApi.getById('123')
+    expect(res.id).toBe('123')
+    expect(res.status).toBe('pending')
+    expect(res.date).toBeDefined()
+  })
+
+  it('getHistory handles missing collections array', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { collections: null } 
+    })
+    const res = await analysisApi.getHistory()
+    expect(res.items.length).toBe(0)
+  })
+
+  it('getHistory handles full-details errors and missing payload/analyses', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { collections: [ { url: 'owner/repo1' }, { url: 'owner/repo2' }, { url: 'https://github.com/no-git' }, { url: '' } ] }
+    })
+
+    // repo1 fails
+    mockGet.mockRejectedValueOnce(new Error('network error'))
+    
+    // repo2 returns payload without analyses
+    mockGet.mockResolvedValueOnce({ data: {} }) // `res.data` is `{}` so `res.data.data` is undefined, `res.data` truthy but no `analyses`, handled.
+    
+    // no-git returns 1 analysis with missing timestamp/createdAt
+    mockGet.mockResolvedValueOnce({
+      data: {
+        data: {
+          analyses: [
+            { analysisId: 'a1', branch: 'main' } // missing timestamps
+          ]
+        }
+      }
+    })
+
+    // empty URL returns falsy data for payload fallback testing
+    mockGet.mockResolvedValueOnce({ data: null }) // `res.data` is null -> falls back to `{ analyses: [] }` but we'll include an analysis directly if possible? Wait, if it falls back to `{ analyses: [] }`, we won't see it in items to test `repoName`. Let's mock a payload that gives `analyses: [{analysisId: 'a2'}]` but the collection has `url: ''`.
+    
+    const res = await analysisApi.getHistory()
+    // It should have 1 item from no-git. (wait, if url is '', the 4th call gives data: null => analyses = []). Thus items.length = 1.
+    expect(res.items.length).toBe(1)
+    expect(res.items[0].repositoryName).toBe('no-git')
+    expect(res.items[0].date).toBeDefined()
+  })
+
+  it('getHistory handles empty url resulting in Sconosciuto and null payload resulting in default object', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { collections: [ { url: '' } ] }
+    })
+    
+    // Mock the axios response to have undefined/null data
+    // But then analyses will be empty, so no items produced.
+    // Instead to test `{ analyses: [] }` fallback we just ensure no error is thrown when data is completely falsey. 
+    mockGet.mockResolvedValueOnce({ data: null })
+
+    const res = await analysisApi.getHistory()
+    expect(res.items.length).toBe(0)
+  })
+
+  it('getHistory hits Sconosciuto branch when URL is empty but analyses are present', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { collections: [ { url: '' } ] }
+    })
+    mockGet.mockResolvedValueOnce({
+      data: { data: { analyses: [{ analysisId: 'empty-url-id' }] } }
+    })
+
+    const res = await analysisApi.getHistory()
+    expect(res.items.length).toBe(1)
+    expect(res.items[0].repositoryName).toBe('Sconosciuto')
+  })
 })
