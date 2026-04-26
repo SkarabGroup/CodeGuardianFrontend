@@ -209,4 +209,15 @@ describe('RemediationList', () => {
     await waitFor(() => expect(acceptBtn).toBeDisabled())
     await waitFor(() => expect(rejectBtn).toBeDisabled())
   })
+  // TU-10.4 — Remediation: verifica che l'ordine (già ordinato dal mock) venga preservato
+  it('preserves the descending criticality order provided by the mock (TU-10.4)', () => {
+    const sortedMock = [
+      { id: '2', title: 'Critical Rem', severity: 'critical' as const },
+      { id: '3', title: 'Warning Rem', severity: 'warning' as const },
+      { id: '1', title: 'Info Rem', severity: 'info' as const },
+    ]
+    renderList(sortedMock)
+    const titles = screen.getAllByText(/Rem$/).map(el => el.textContent)
+    expect(titles).toEqual(['Critical Rem', 'Warning Rem', 'Info Rem'])
+  })
 })

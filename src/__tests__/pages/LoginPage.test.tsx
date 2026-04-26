@@ -86,6 +86,24 @@ describe('LoginPage', () => {
     expect(mockLogin).not.toHaveBeenCalled()
   })
 
+  // TU-2.12 — notifica formato email non conforme
+  it('shows error for invalid email format (TU-2.12)', async () => {
+    renderPage()
+    const emailInput = screen.getByPlaceholderText('tu@esempio.com')
+    fireEvent.change(emailInput, { target: { value: 'invalid-email' } }) 
+    fireEvent.submit(emailInput.closest('form')!)
+    await waitFor(() =>
+      expect(screen.getByText(/email non valida/i)).toBeInTheDocument(),
+    )
+  })
+
+  // TU-2.14 — verifica maschera password (formato input)
+  it('has a masked password field (TU-2.14)', () => {
+    renderPage()
+    const pwdInput = screen.getByPlaceholderText('••••••••')
+    expect(pwdInput).toHaveAttribute('type', 'password')
+  })
+
   // TU-2.3 — password obbligatoria
   it('shows error when password is empty', async () => {
     renderPage()

@@ -183,6 +183,21 @@ describe('calculateScores', () => {
     expect(result.reportObj?.remediations).toEqual([])
   })
 
+  // TU-8.5 — Validazione algoritmo calcolo punteggi
+  it('calculates the repository scores correctly from raw report data (TU-8.5)', () => {
+    const result = calculateScores({
+      codeReportJson: { analysis_report: { static_analysis: { issues: [{ severity: 'critical' }, { severity: 'warning' }] } } },
+      secReportJson: { analysis_report: { trivy: [{ severity: 'high' }] } },
+      docsReportJson: { analysis_report: { API_standard_violations: [{ severity: 'error' }] } },
+    })
+    // Quality: 100 - 2*2 = 96
+    expect(result.reportObj.qualityScore).toBe(96)
+    // Security: 100 - 1*3 = 97
+    expect(result.reportObj.securityScore).toBe(97)
+    // Docs: 100 - 1*5 = 95
+    expect(result.reportObj.documentationScore).toBe(95)
+  })
+
   it('defaults to 0 scores when COMPLETED but no score fields provided', () => {
     const result = calculateScores({ status: 'COMPLETED' })
     expect(result.reportObj?.qualityScore).toBe(0)

@@ -122,6 +122,22 @@ describe('AnalysisOptionsModal', () => {
     expect(mockStartAnalysis).not.toHaveBeenCalled()
   })
 
+  // TU-6.7 — inibizione richiesta in assenza di aree selezionate
+  it('blocks deselection of the last area (TU-6.7)', async () => {
+    renderModal()
+    const areaButtons = screen.getAllByRole('button').filter(
+      btn => ['Codice', 'Sicurezza', 'Documentazione'].some(label =>
+        btn.textContent?.includes(label)
+      )
+    )
+    // Try to deselect all
+    for (const btn of areaButtons) fireEvent.click(btn)
+    
+    // The toggleArea logic should block the last one
+    expect(screen.getByRole('button', { name: /avvia \(1\)/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /avvia/i })).not.toBeDisabled()
+  })
+
   // Branch valido — accettato
   it('accepts a valid branch name', async () => {
     renderModal()
@@ -129,6 +145,7 @@ describe('AnalysisOptionsModal', () => {
     fireEvent.change(branchInput, { target: { value: 'feature/my-feature' } })
     fireEvent.click(screen.getByRole('button', { name: /avvia/i }))
     await waitFor(() => expect(mockStartAnalysis).toHaveBeenCalled())
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled())
   })
 
   // Commit hash non valido

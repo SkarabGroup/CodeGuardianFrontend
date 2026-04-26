@@ -202,6 +202,26 @@ describe('repositoriesApi', () => {
     expect(result.lastAnalysis?.status).toBe('completed')
   })
 
+  it('verifies audit timestamp format is preserved (TU-6.9)', async () => {
+    const isoDate = '2025-06-01T10:00:00.000Z'
+    mockGet.mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          name: 'repo',
+          analyses: [{
+            analysisId: 'an-1',
+            status: 'COMPLETED',
+            createdAt: isoDate,
+            fullReport: { qualityScore: 90, remediations: [] },
+          }],
+        },
+      },
+    })
+    const result = await repositoriesApi.get(encodeURIComponent('https://github.com/org/repo'))
+    expect(result.lastAnalysis?.date).toBe(isoDate)
+  })
+
   it('get returns undefined lastAnalysis when analyses array is empty', async () => {
     mockGet.mockResolvedValue({
       data: { success: true, data: { name: 'repo', analyses: [] } },
@@ -782,6 +802,30 @@ describe('repositoriesApi', () => {
     mockGet.mockResolvedValueOnce({ data: { data: {} } })
     const r4 = await repositoriesApi.list()
     expect(r4[0].name).toBe('base')
+  })
+
+  it('returns repositories in descending order as provided by the API (TU-5.1)', async () => {
+    const data = [
+      { url: 'recent-repo', lastAnalysisDate: '2024-03-26T10:00:00Z' },
+      { url: 'older-repo', lastAnalysisDate: '2024-03-20T10:00:00Z' }
+    ]
+    mockGet
+      .mockResolvedValueOnce({ data: { collections: data } })
+      .mockResolvedValue({ data: { data: { analyses: [] } } }) // for details
+    
+    const result = await repositoriesApi.list()
+    expect(result[0].url).toBe('recent-repo')
+    expect(result[1].url).toBe('older-repo')
+  })
+
+  it('preserves audit timestamp as ISO 8601 (TU-6.9)', async () => {
+    const isoDate = '2024-03-26T10:00:00.000Z'
+    mockGet
+      .mockResolvedValueOnce({ data: { collections: [{ url: 'repo-1', lastAnalysisDate: isoDate }] } })
+      .mockResolvedValueOnce({ data: { data: { analyses: [{ timestamp: isoDate, status: 'COMPLETED' }] } } })
+    
+    const result = await repositoriesApi.list()
+    expect(result[0].lastAnalysis?.date).toBe(isoDate)
   })
 
   it('list handles all date fallback branches', async () => {

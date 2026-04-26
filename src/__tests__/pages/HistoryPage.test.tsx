@@ -110,6 +110,20 @@ describe('HistoryPage', () => {
     )
   })
 
+  // TU-7.3 — controllo campi obbligatori (se DA/A mancano, mostra tutto)
+  it('shows all analyses when no dates are selected (TU-7.3)', async () => {
+    mockGetHistory.mockResolvedValue({
+      items: [
+        { id: '1', date: '2025-01-01T00:00:00Z', status: 'completed', repositoryName: 'repo-1' },
+        { id: '2', date: '2025-02-01T00:00:00Z', status: 'completed', repositoryName: 'repo-2' },
+      ],
+      totalPages: 1,
+    })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('repo-1')).toBeInTheDocument())
+    expect(screen.getByText('repo-2')).toBeInTheDocument()
+  })
+
   // Intestazioni colonne visibili con dati
   it('shows column headers when analyses are present', async () => {
     mockGetHistory.mockResolvedValue({

@@ -186,10 +186,13 @@ describe('RegisterPage', () => {
     )
   })
 
-  // Registrazione fallita — mostra toast di errore e non naviga
-  it('shows error toast and does not navigate on failed registration', async () => {
+  // TU-1.14 — segnalazione username già in uso (feedback visivo tramite toast)
+  it('shows error toast for username already in use (TU-1.14)', async () => {
     const { toast } = await import('sonner')
-    mockRegister.mockRejectedValueOnce(new Error('already exists'))
+    const errorMsg = 'Username già in uso'
+    mockRegister.mockRejectedValueOnce({
+      response: { data: { message: errorMsg } },
+    })
     renderPage()
     fireEvent.change(screen.getByPlaceholderText('mario_rossi'), { target: { value: 'mario99' } })
     fireEvent.change(screen.getByPlaceholderText('tu@esempio.com'), { target: { value: 'mario@test.com' } })
@@ -197,7 +200,13 @@ describe('RegisterPage', () => {
     fireEvent.change(pwds[0], { target: { value: 'Secure1!' } })
     fireEvent.change(pwds[1], { target: { value: 'Secure1!' } })
     fireEvent.click(getSubmitBtn())
-    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'Registrazione fallita',
+        expect.objectContaining({ description: errorMsg }),
+      )
+    })
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 

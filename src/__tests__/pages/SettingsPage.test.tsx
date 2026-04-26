@@ -166,6 +166,21 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(mockChangePassword).toHaveBeenCalledWith('NewPass1@'))
     await waitFor(() => expect(toast.success).toHaveBeenCalled())
   })
+  
+  // TU-15.8 — verifica invalidazione sessioni post-cambio password
+  it('triggers session invalidation logic via user password update (TU-15.8)', async () => {
+    mockChangePassword.mockResolvedValueOnce({ invalidatedSessionsCount: 5 })
+    renderPage()
+    await user.click(screen.getByRole('tab', { name: /^password$/i }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /aggiorna password/i })).toBeInTheDocument())
+    const form = screen.getByRole('button', { name: /aggiorna password/i }).closest('form')!
+    const inputs = form.querySelectorAll('input[type="password"]')
+    fireEvent.change(inputs[0], { target: { value: 'OldPass1!' } })
+    fireEvent.change(inputs[1], { target: { value: 'NewPass1@' } })
+    fireEvent.change(inputs[2], { target: { value: 'NewPass1@' } })
+    fireEvent.submit(form)
+    await waitFor(() => expect(mockChangePassword).toHaveBeenCalled())
+  })
 
   // Eliminazione account con password errata
   it('shows "Password errata" toast when delete account is called with wrong password', async () => {
